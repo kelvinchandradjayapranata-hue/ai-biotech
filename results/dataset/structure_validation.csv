@@ -1,0 +1,8 @@
+protein_id,uniprot_accession,expected_length,observed_length,sequence_match,model_count,chain_count,chain_id,afdb_sequence_checksum_match,validation_status,notes
+P61626,P61626,148,148,YES,1,1,A,YES,PASS,chains=A
+P02144,P02144,154,154,YES,1,1,A,YES,PASS,chains=A
+P99999,P99999,105,105,YES,1,1,A,YES,PASS,chains=A
+P0DP23,P0DP23,149,149,YES,1,1,A,YES,PASS,chains=A
+P00441,P00441,154,154,YES,1,1,A,YES,PASS,chains=A
+P61823,P61823,150,150,YES,1,1,A,YES,PASS,chains=A
+P42212,P42212,238,238,YES,1,1,A,YES,PASS,chains=A

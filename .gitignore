@@ -1,0 +1,19 @@
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.ipynb_checkpoints/
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+
+# Large intermediate AlphaFold Server files
+data/alphafold_downloads/*/msas/
+data/alphafold_downloads/*/templates/
+
+data/alphafold_downloads/

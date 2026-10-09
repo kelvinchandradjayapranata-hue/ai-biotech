@@ -1,0 +1,29 @@
+{
+  "name": "ubiquitin",
+  "sequence": "MQIFVKTLTGKTITLEVEPSDTIENVKAKIQDKEGIPPDQQRLIFAGKQLEDGRTLSDYNIQKESTLHLVLRLRGG",
+  "analyzed_on": "2026-10-05",
+  "length": 76,
+  "composition": {
+    "L": 9,
+    "I": 7,
+    "K": 7,
+    "T": 7,
+    "E": 6,
+    "G": 6,
+    "Q": 6,
+    "D": 5,
+    "R": 4,
+    "V": 4,
+    "P": 3,
+    "S": 3,
+    "A": 2,
+    "F": 2,
+    "N": 2,
+    "H": 1,
+    "M": 1,
+    "Y": 1
+  },
+  "molecular_weight_da": 8564.7,
+  "isoelectric_point": 6.56,
+  "gravy": -0.489
+}

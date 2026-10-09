@@ -1,0 +1,8 @@
+protein_id,uniprot_accession,sequence_length,pae_rows,pae_columns,matrix_shape_valid,min_pae,max_pae,validation_status,notes
+P61626,P61626,148,148,148,YES,0,31,PASS,format=list[0]['predicted_aligned_error']; max_predicted_aligned_error=31.75
+P02144,P02144,154,154,154,YES,0,29,PASS,format=list[0]['predicted_aligned_error']; max_predicted_aligned_error=31.75
+P99999,P99999,105,105,105,YES,0,23,PASS,format=list[0]['predicted_aligned_error']; max_predicted_aligned_error=31.75
+P0DP23,P0DP23,149,149,149,YES,0,31,PASS,format=list[0]['predicted_aligned_error']; max_predicted_aligned_error=31.75
+P00441,P00441,154,154,154,YES,0,24,PASS,format=list[0]['predicted_aligned_error']; max_predicted_aligned_error=31.75
+P61823,P61823,150,150,150,YES,0,31,PASS,format=list[0]['predicted_aligned_error']; max_predicted_aligned_error=31.75
+P42212,P42212,238,238,238,YES,0,25,PASS,format=list[0]['predicted_aligned_error']; max_predicted_aligned_error=31.75

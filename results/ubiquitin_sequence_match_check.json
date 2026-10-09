@@ -1,0 +1,26 @@
+{
+  "check": "sequence_match_structure_vs_fasta",
+  "checked_on": "2026-10-05",
+  "structure_file": "structures/ubiquitin_alphafold.cif",
+  "reference_fasta": "data/ubiquitin_sequence.fasta",
+  "length_fasta": 76,
+  "length_structure": 76,
+  "length_parser_output": 76,
+  "structure_vs_fasta": "IDENTICAL",
+  "parser_output_vs_fasta": "IDENTICAL",
+  "first_residue": "MET1",
+  "last_residue": "GLY76",
+  "n_chains": 1,
+  "chain_ids": [
+    "A"
+  ],
+  "n_atoms": 602,
+  "n_hetatm": 0,
+  "n_unknown_residues": 0,
+  "bbox_size_angstrom": [
+    37.93,
+    25.38,
+    29.62
+  ],
+  "plddt_cif_vs_full_data_json_identical": false
+}

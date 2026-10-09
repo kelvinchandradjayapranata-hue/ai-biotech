@@ -1,0 +1,25 @@
+{
+  "analyzed_on": "2026-10-05",
+  "file": "ubiquitin_alphafold.cif",
+  "format": "mmCIF",
+  "n_models": 1,
+  "n_chains": 1,
+  "total_residues": 76,
+  "chains": [
+    {
+      "chain_id": "A",
+      "n_residues": 76,
+      "n_atoms": 602,
+      "n_hetatm": 0,
+      "sequence": "MQIFVKTLTGKTITLEVEPSDTIENVKAKIQDKEGIPPDQQRLIFAGKQLEDGRTLSDYNIQKESTLHLVLRLRGG",
+      "bfactor_plddt_stats": {
+        "mean": 95.31,
+        "min": 53.2,
+        "max": 98.75,
+        "frac_ge_70": 0.974,
+        "frac_ge_90": 0.921
+      }
+    }
+  ],
+  "note_bfactor": "Nilai B-factor dibaca apa adanya dari file. Pada output AlphaFold Server, kolom ini umumnya berisi pLDDT (0-100). Verifikasi dengan file Anda sendiri."
+}

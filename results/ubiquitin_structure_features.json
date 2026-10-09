@@ -1,0 +1,262 @@
+{
+  "dataset": "ubiquitin residue-level features",
+  "generated_on": "2026-10-05",
+  "generator": "src/extract_protein_features.py",
+  "inputs": {
+    "structure": {
+      "path": "structures\\ubiquitin_alphafold.cif",
+      "sha256": "adc6c6e825893e57590c5c5a2921875c9f06d8279025091b38fc88ad2968aa5d"
+    },
+    "full_data_json": {
+      "path": "data\\alphafold_downloads\\fold_2026_10_05_10_26\\fold_2026_10_05_10_26_full_data_0.json",
+      "sha256": "09178e510be8f5176bb3aeac92935e0f33d2a238346e073fd0668f6a687da61d"
+    },
+    "reference_fasta": {
+      "path": "data\\ubiquitin_sequence.fasta",
+      "sha256": "35100b2cfcb5300b6f969e5b2393ef1c9f644d73f7ac23e49a426d1ec238cff1"
+    }
+  },
+  "n_residues": 76,
+  "n_chains": 1,
+  "chain_ids": [
+    "A"
+  ],
+  "n_atoms": 602,
+  "sequence": "MQIFVKTLTGKTITLEVEPSDTIENVKAKIQDKEGIPPDQQRLIFAGKQLEDGRTLSDYNIQKESTLHLVLRLRGG",
+  "columns": [
+    "chain",
+    "residue_id",
+    "residue_name",
+    "one_letter_aa",
+    "sequence_position",
+    "sequence_length",
+    "amino_acid_type",
+    "hydropathy_kd",
+    "charge_ph7",
+    "ca_x",
+    "ca_y",
+    "ca_z",
+    "n_atoms",
+    "n_backbone_atoms",
+    "has_full_backbone",
+    "centroid_x",
+    "centroid_y",
+    "centroid_z",
+    "plddt_ca",
+    "plddt_atom_mean",
+    "plddt_atom_min",
+    "plddt_atom_max",
+    "plddt_atom_std",
+    "pae_mean_row",
+    "pae_mean_col",
+    "pae_local_mean_k10",
+    "contact_prob_sum",
+    "n_high_conf_contacts"
+  ],
+  "feature_definitions": {
+    "chain": {
+      "description": "ID chain (author) di file mmCIF",
+      "unit": "-"
+    },
+    "residue_id": {
+      "description": "nomor residu sesuai penomoran di file struktur",
+      "unit": "-"
+    },
+    "residue_name": {
+      "description": "nama residu 3-huruf",
+      "unit": "-"
+    },
+    "one_letter_aa": {
+      "description": "kode asam amino 1-huruf",
+      "unit": "-"
+    },
+    "sequence_position": {
+      "description": "posisi 1-based dalam urutan residu protein (referensi FASTA)",
+      "unit": "-"
+    },
+    "sequence_length": {
+      "description": "panjang total sekuens protein",
+      "unit": "residu"
+    },
+    "amino_acid_type": {
+      "description": "kategori sifat: nonpolar/aromatic/polar/basic/acidic/special (pengelompokan sederhana)",
+      "unit": "-"
+    },
+    "hydropathy_kd": {
+      "description": "indeks hidropati Kyte-Doolittle (1982), tabel standar",
+      "unit": "skor tanpa satuan"
+    },
+    "charge_ph7": {
+      "description": "muatan formal sidechain pada pH 7 (D,E=-1; K,R=+1; lainnya 0; H disederhanakan netral)",
+      "unit": "e (muatan elementer)"
+    },
+    "ca_x": {
+      "description": "koordinat X atom CA residu",
+      "unit": "Angstrom"
+    },
+    "ca_y": {
+      "description": "koordinat Y atom CA residu",
+      "unit": "Angstrom"
+    },
+    "ca_z": {
+      "description": "koordinat Z atom CA residu",
+      "unit": "Angstrom"
+    },
+    "n_atoms": {
+      "description": "jumlah atom (berat) dalam residu, dari file struktur",
+      "unit": "atom"
+    },
+    "n_backbone_atoms": {
+      "description": "jumlah atom backbone yang ada (N, CA, C, O)",
+      "unit": "atom"
+    },
+    "has_full_backbone": {
+      "description": "True jika atom N, CA, C, O lengkap keempatnya",
+      "unit": "boolean"
+    },
+    "centroid_x": {
+      "description": "koordinat X centroid residu = rata-rata semua koordinat atom (unweighted)",
+      "unit": "Angstrom"
+    },
+    "centroid_y": {
+      "description": "koordinat Y centroid residu = rata-rata semua koordinat atom (unweighted)",
+      "unit": "Angstrom"
+    },
+    "centroid_z": {
+      "description": "koordinat Z centroid residu = rata-rata semua koordinat atom (unweighted)",
+      "unit": "Angstrom"
+    },
+    "plddt_ca": {
+      "description": "pLDDT atom CA, dibaca dari kolom B-factor file mmCIF (konvensi output AlphaFold)",
+      "unit": "0-100"
+    },
+    "plddt_atom_mean": {
+      "description": "rata-rata pLDDT semua atom residu, dari atom_plddts di full_data json",
+      "unit": "0-100"
+    },
+    "plddt_atom_min": {
+      "description": "pLDDT minimum antar atom residu (full_data json)",
+      "unit": "0-100"
+    },
+    "plddt_atom_max": {
+      "description": "pLDDT maksimum antar atom residu (full_data json)",
+      "unit": "0-100"
+    },
+    "plddt_atom_std": {
+      "description": "simpangan baku pLDDT antar atom residu (full_data json)",
+      "unit": "0-100"
+    },
+    "pae_mean_row": {
+      "description": "mean_j PAE[i][j] untuk residu ini (baris i matriks PAE apa adanya)",
+      "unit": "Angstrom"
+    },
+    "pae_mean_col": {
+      "description": "mean_j PAE[j][i] untuk residu ini (kolom i matriks PAE apa adanya)",
+      "unit": "Angstrom"
+    },
+    "pae_local_mean_k10": {
+      "description": "mean PAE[i][j] untuk j dengan |i-j|<=10, j!=i (error lokal residu ini terhadap tetangga sekuens)",
+      "unit": "Angstrom"
+    },
+    "contact_prob_sum": {
+      "description": "sum_j!=i contact_probs[i][j] (total probabilitas kontak prediksi, tanpa diagonal)",
+      "unit": "probabilitas (0-1), dijumlahkan"
+    },
+    "n_high_conf_contacts": {
+      "description": "jumlah j!=i dengan contact_probs[i][j] >= 0.50 (ambang dipilih eksplisit; ini prediksi, bukan kontak eksperimental)",
+      "unit": "pasangan residu"
+    }
+  },
+  "plddt": {
+    "ca_mean": 95.315,
+    "ca_min": 53.2,
+    "ca_max": 98.75,
+    "ca_frac_ge_70": 0.9737,
+    "ca_frac_ge_90": 0.9211,
+    "atom_mean_global": 92.002,
+    "note": "plddt_ca dibaca dari kolom B-factor CIF; plddt_atom_* dari atom_plddts json. Selisih kedua kanal output AlphaFold Server <= 0.09 (pembulatan internal server, mean selisih terukur 0.0128, maks 0.0900)."
+  },
+  "pae": {
+    "shape": [
+      76,
+      76
+    ],
+    "token_res_ids": "1..N berurutan (diverifikasi)",
+    "min": 0.8,
+    "max": 26.1,
+    "mean": 2.636,
+    "median": 1.6,
+    "percentiles": {
+      "1": 0.8,
+      "5": 0.8,
+      "25": 1.2,
+      "50": 1.6,
+      "75": 2.4,
+      "95": 7.425,
+      "99": 21.0
+    },
+    "histogram": {
+      "bin_edges": [
+        0.0,
+        2.0,
+        4.0,
+        6.0,
+        8.0,
+        10.0,
+        12.0,
+        14.0,
+        16.0,
+        18.0,
+        20.0,
+        22.0,
+        24.0,
+        26.0,
+        28.0
+      ],
+      "counts": [
+        3630,
+        1452,
+        303,
+        116,
+        46,
+        35,
+        29,
+        32,
+        29,
+        33,
+        27,
+        28,
+        14,
+        2
+      ]
+    },
+    "orientation_note": "Matriks dipakai apa adanya dari full_data json (tanpa transpose/reshape). Baris i dan kolom j dipetakan ke residu via token_res_ids. Interpretasi umum AlphaFold: elemen [i][j] = estimasi error posisi token i bila struktur di-align pada token j."
+  },
+  "contact_probs": {
+    "shape": [
+      76,
+      76
+    ],
+    "symmetric_max_diff": 0.0,
+    "diagonal": {
+      "min": 1.0,
+      "median": 1.0,
+      "max": 1.0
+    },
+    "offdiag_mean": 0.1173,
+    "offdiag_median": 0.0,
+    "offdiag_max": 1.0,
+    "n_pairs_ge_0.50_unordered": 335,
+    "threshold_note": "Ambang 0.5 dipilih eksplisit untuk fitur turunan. Ini probabilitas kontak PREDIKSI model, bukan kontak eksperimental."
+  },
+  "structure_bbox_angstrom": [
+    37.93,
+    25.38,
+    29.62
+  ],
+  "notes": [
+    "Dataset berisi 76 residu x 1 chain (ubiquitin, prediksi AlphaFold Server model_0).",
+    "Semua feature adalah turunan langsung dari file prediksi; tidak ada data eksperimen.",
+    "pLDDT tinggi / PAE rendah = keyakinan MODEL, bukan bukti fungsi atau kebenaran biologis."
+  ]
+}

@@ -1,0 +1,700 @@
+{
+  "dataset": "multi-protein residue-level features (AlphaFold DB, 7 protein, v6)",
+  "generator": "src/extract_multi_protein_features.py",
+  "protein_count": 7,
+  "total_residue_rows": 1098,
+  "schema": {
+    "historical_reference": {
+      "file": "results/ubiquitin_residue_features.csv",
+      "columns": [
+        "chain",
+        "residue_id",
+        "residue_name",
+        "one_letter_aa",
+        "sequence_position",
+        "sequence_length",
+        "amino_acid_type",
+        "hydropathy_kd",
+        "charge_ph7",
+        "ca_x",
+        "ca_y",
+        "ca_z",
+        "n_atoms",
+        "n_backbone_atoms",
+        "has_full_backbone",
+        "centroid_x",
+        "centroid_y",
+        "centroid_z",
+        "plddt_ca",
+        "plddt_atom_mean",
+        "plddt_atom_min",
+        "plddt_atom_max",
+        "plddt_atom_std",
+        "pae_mean_row",
+        "pae_mean_col",
+        "pae_local_mean_k10",
+        "contact_prob_sum",
+        "n_high_conf_contacts"
+      ],
+      "note": "Stage 3 reference schema contains 28 columns. Two contact-derived columns depend on AlphaFold Server `contact_probs`, which are not present in the frozen AlphaFold DB dataset. They are therefore excluded from the Stage 6 AFDB feature table rather than imputed, approximated, or silently redefined."
+    },
+    "identifier_columns": [
+      "protein_id",
+      "uniprot_accession",
+      "afdb_id"
+    ],
+    "identifier_column_notes": {
+      "protein_id": "ID protein internal project (source of truth: manifest Tahap 5)",
+      "uniprot_accession": "accession UniProtKB",
+      "afdb_id": "entry ID AlphaFold DB (AF-<accession>-F1)"
+    },
+    "feature_columns": [
+      "chain",
+      "residue_id",
+      "residue_name",
+      "one_letter_aa",
+      "sequence_position",
+      "sequence_length",
+      "amino_acid_type",
+      "hydropathy_kd",
+      "charge_ph7",
+      "ca_x",
+      "ca_y",
+      "ca_z",
+      "n_atoms",
+      "n_backbone_atoms",
+      "has_full_backbone",
+      "centroid_x",
+      "centroid_y",
+      "centroid_z",
+      "plddt_ca",
+      "plddt_atom_mean",
+      "plddt_atom_min",
+      "plddt_atom_max",
+      "plddt_atom_std",
+      "pae_mean_row",
+      "pae_mean_col",
+      "pae_local_mean_k10"
+    ],
+    "output_columns": [
+      "protein_id",
+      "uniprot_accession",
+      "afdb_id",
+      "chain",
+      "residue_id",
+      "residue_name",
+      "one_letter_aa",
+      "sequence_position",
+      "sequence_length",
+      "amino_acid_type",
+      "hydropathy_kd",
+      "charge_ph7",
+      "ca_x",
+      "ca_y",
+      "ca_z",
+      "n_atoms",
+      "n_backbone_atoms",
+      "has_full_backbone",
+      "centroid_x",
+      "centroid_y",
+      "centroid_z",
+      "plddt_ca",
+      "plddt_atom_mean",
+      "plddt_atom_min",
+      "plddt_atom_max",
+      "plddt_atom_std",
+      "pae_mean_row",
+      "pae_mean_col",
+      "pae_local_mean_k10"
+    ],
+    "feature_definitions": {
+      "chain": {
+        "description": "ID chain (author) di file mmCIF",
+        "unit": "-"
+      },
+      "residue_id": {
+        "description": "nomor residu sesuai penomoran di file struktur",
+        "unit": "-"
+      },
+      "residue_name": {
+        "description": "nama residu 3-huruf",
+        "unit": "-"
+      },
+      "one_letter_aa": {
+        "description": "kode asam amino 1-huruf",
+        "unit": "-"
+      },
+      "sequence_position": {
+        "description": "posisi 1-based dalam urutan residu protein (referensi FASTA)",
+        "unit": "-"
+      },
+      "sequence_length": {
+        "description": "panjang total sekuens protein",
+        "unit": "residu"
+      },
+      "amino_acid_type": {
+        "description": "kategori sifat: nonpolar/aromatic/polar/basic/acidic/special (pengelompokan sederhana)",
+        "unit": "-"
+      },
+      "hydropathy_kd": {
+        "description": "indeks hidropati Kyte-Doolittle (1982), tabel standar",
+        "unit": "skor tanpa satuan"
+      },
+      "charge_ph7": {
+        "description": "muatan formal sidechain pada pH 7 (D,E=-1; K,R=+1; lainnya 0; H disederhanakan netral)",
+        "unit": "e (muatan elementer)"
+      },
+      "ca_x": {
+        "description": "koordinat X atom CA residu",
+        "unit": "Angstrom"
+      },
+      "ca_y": {
+        "description": "koordinat Y atom CA residu",
+        "unit": "Angstrom"
+      },
+      "ca_z": {
+        "description": "koordinat Z atom CA residu",
+        "unit": "Angstrom"
+      },
+      "n_atoms": {
+        "description": "jumlah atom (berat) dalam residu, dari file struktur",
+        "unit": "atom"
+      },
+      "n_backbone_atoms": {
+        "description": "jumlah atom backbone yang ada (N, CA, C, O)",
+        "unit": "atom"
+      },
+      "has_full_backbone": {
+        "description": "True jika atom N, CA, C, O lengkap keempatnya",
+        "unit": "boolean"
+      },
+      "centroid_x": {
+        "description": "koordinat X centroid residu = rata-rata semua koordinat atom (unweighted)",
+        "unit": "Angstrom"
+      },
+      "centroid_y": {
+        "description": "koordinat Y centroid residu = rata-rata semua koordinat atom (unweighted)",
+        "unit": "Angstrom"
+      },
+      "centroid_z": {
+        "description": "koordinat Z centroid residu = rata-rata semua koordinat atom (unweighted)",
+        "unit": "Angstrom"
+      },
+      "plddt_ca": {
+        "description": "pLDDT atom CA, dibaca dari kolom B-factor file mmCIF (konvensi output AlphaFold)",
+        "unit": "0-100"
+      },
+      "plddt_atom_mean": {
+        "description": "rata-rata pLDDT semua atom residu, dari atom_plddts di full_data json",
+        "unit": "0-100"
+      },
+      "plddt_atom_min": {
+        "description": "pLDDT minimum antar atom residu (full_data json)",
+        "unit": "0-100"
+      },
+      "plddt_atom_max": {
+        "description": "pLDDT maksimum antar atom residu (full_data json)",
+        "unit": "0-100"
+      },
+      "plddt_atom_std": {
+        "description": "simpangan baku pLDDT antar atom residu (full_data json)",
+        "unit": "0-100"
+      },
+      "pae_mean_row": {
+        "description": "mean_j PAE[i][j] untuk residu ini (baris i matriks PAE apa adanya)",
+        "unit": "Angstrom"
+      },
+      "pae_mean_col": {
+        "description": "mean_j PAE[j][i] untuk residu ini (kolom i matriks PAE apa adanya)",
+        "unit": "Angstrom"
+      },
+      "pae_local_mean_k10": {
+        "description": "mean PAE[i][j] untuk j dengan |i-j|<=10, j!=i (error lokal residu ini terhadap tetangga sekuens)",
+        "unit": "Angstrom"
+      }
+    },
+    "excluded_features": [
+      {
+        "name": "contact_prob_sum",
+        "stage3_definition": "sum_j!=i contact_probs[i][j] (total probabilitas kontak prediksi, tanpa diagonal)",
+        "stage3_unit": "probabilitas (0-1), dijumlahkan",
+        "source_channel": "contact_probs (hanya di output AlphaFold Server full_data json)",
+        "reason": "Tidak tersedia di dataset AFDB yang frozen (AFDB tidak menyediakan matriks contact_probs); dikeluarkan dari tabel Tahap 6 - bukan diimputasi/diproksikan."
+      },
+      {
+        "name": "n_high_conf_contacts",
+        "stage3_definition": "jumlah j!=i dengan contact_probs[i][j] >= 0.50 (ambang dipilih eksplisit; ini prediksi, bukan kontak eksperimental)",
+        "stage3_unit": "pasangan residu",
+        "stage3_threshold": 0.5,
+        "source_channel": "contact_probs (hanya di output AlphaFold Server full_data json)",
+        "reason": "Tidak tersedia di dataset AFDB yang frozen (AFDB tidak menyediakan matriks contact_probs); dikeluarkan dari tabel Tahap 6 - bukan diimputasi/diproksikan."
+      }
+    ],
+    "source_channel_notes": {
+      "plddt": "plddt_ca & plddt_atom_* dibaca dari kolom B-factor file CIF (channel resmi AFDB). Definisi fitur tidak berubah; verifikasi: mean pLDDT CA per protein cocok dengan globalMetricValue API (selisih <= 0.03). Catatan granularitas: file CIF AFDB menulis pLDDT per-residu ke SEMUA atom residu tersebut (std antar-atom = 0 di dataset ini) - berbeda dari full_data AlphaFold Server yang menyimpan pLDDT per-atom secara terpisah.",
+      "pae": "Matriks PAE dari paeDocUrl AFDB dipakai apa adanya (tanpa transpose/reshape).",
+      "sequence": "Sekuens struktur diverifikasi terhadap uniprotSequence API + sequenceChecksum MD5."
+    }
+  },
+  "input_manifest": {
+    "path": "results/dataset/dataset_download_manifest.csv",
+    "sha256": "67ed8a389d29782f0f67edbb49c1a95385fddca00e3f3f9d20db3b4f1d16c3a8"
+  },
+  "proteins": [
+    {
+      "protein_id": "P61626",
+      "uniprot_accession": "P61626",
+      "afdb_id": "AF-P61626-F1",
+      "afdb_version": "6",
+      "inputs": {
+        "structure": {
+          "path": "data/alphafold_db/raw/AF-P61626-F1-model_v6.cif",
+          "sha256": "8444ea54dc496d7a8107257040ca7d12476f0508a943b17890b846ecd1e2b99e"
+        },
+        "pae_doc": {
+          "path": "data/alphafold_db/raw/AF-P61626-F1-predicted_aligned_error_v6.json",
+          "sha256": "b3fba0b90f6a79cfa60952a2243a1410cc108438ab998bb50de620014ad26902"
+        },
+        "api_metadata": {
+          "path": "data/alphafold_db/metadata/api_P61626.json",
+          "sha256": "e07459193df20a882e5822431929e6634dc70319d1928f9ce905945021816eab"
+        }
+      },
+      "n_residues": 148,
+      "n_chains": 1,
+      "chain_ids": [
+        "A"
+      ],
+      "n_atoms": 1157,
+      "sequence": "MKALIVLGLVLLSVTVQGKVFERCELARTLKRLGMDGYRGISLANWMCLAKWESGYNTRATNYNAGDRSTDYGIFQINSRYWCNDGKTPGAVNACHLSCSALLQDNIADAVACAKRVVRDPQGIRAWVAWRNRCQNRDVRQYVQGCGV",
+      "residue_numbering": "1..N berurutan (diverifikasi); residue_id == sequence_position",
+      "sequence_checksum_md5_match": true,
+      "plddt": {
+        "ca_mean": 94.073,
+        "ca_min": 45.06,
+        "ca_max": 98.94,
+        "ca_frac_ge_70": 0.8986,
+        "ca_frac_ge_90": 0.8784,
+        "atom_mean_global": 94.426,
+        "source_channel": "kolom B-factor file CIF (channel resmi AFDB; pLDDT disimpan di B-factor). Definisi fitur Tahap 3 tidak diubah."
+      },
+      "pae": {
+        "shape": [
+          148,
+          148
+        ],
+        "min": 0.0,
+        "max": 31.0,
+        "mean": 5.956,
+        "median": 2.0,
+        "percentiles": {
+          "1": 1.0,
+          "5": 1.0,
+          "25": 1.0,
+          "50": 2.0,
+          "75": 4.0,
+          "95": 28.0,
+          "99": 30.0
+        },
+        "orientation_note": "Matriks dipakai apa adanya dari paeDocUrl AFDB (tanpa transpose/reshape). Baris i dan kolom j = posisi residu 1..N (penomoran terverifikasi). Interpretasi umum AlphaFold: elemen [i][j] = estimasi error posisi residu i bila struktur di-align pada residu j."
+      },
+      "structure_bbox_angstrom": [
+        71.9,
+        49.6,
+        41.64
+      ],
+      "status": "PASS"
+    },
+    {
+      "protein_id": "P02144",
+      "uniprot_accession": "P02144",
+      "afdb_id": "AF-P02144-F1",
+      "afdb_version": "6",
+      "inputs": {
+        "structure": {
+          "path": "data/alphafold_db/raw/AF-P02144-F1-model_v6.cif",
+          "sha256": "5fe127f5047a9bda4eb96759c444b9f12b447b24ec49e82bdae32ea768803d23"
+        },
+        "pae_doc": {
+          "path": "data/alphafold_db/raw/AF-P02144-F1-predicted_aligned_error_v6.json",
+          "sha256": "d32c10446d18a6b375af31e19dceb774ffb81ab6354318e8b58b374742e762af"
+        },
+        "api_metadata": {
+          "path": "data/alphafold_db/metadata/api_P02144.json",
+          "sha256": "1de461cc52c4012bfe9bc2537f31c8e952b8cc76549fe62ea167003a07c3d5dd"
+        }
+      },
+      "n_residues": 154,
+      "n_chains": 1,
+      "chain_ids": [
+        "A"
+      ],
+      "n_atoms": 1211,
+      "sequence": "MGLSDGEWQLVLNVWGKVEADIPGHGQEVLIRLFKGHPETLEKFDKFKHLKSEDEMKASEDLKKHGATVLTALGGILKKKGHHEAEIKPLAQSHATKHKIPVKYLEFISECIIQVLQSKHPGDFGADAQGAMNKALELFRKDMASNYKELGFQG",
+      "residue_numbering": "1..N berurutan (diverifikasi); residue_id == sequence_position",
+      "sequence_checksum_md5_match": true,
+      "plddt": {
+        "ca_mean": 97.178,
+        "ca_min": 65.38,
+        "ca_max": 98.81,
+        "ca_frac_ge_70": 0.9935,
+        "ca_frac_ge_90": 0.974,
+        "atom_mean_global": 97.255,
+        "source_channel": "kolom B-factor file CIF (channel resmi AFDB; pLDDT disimpan di B-factor). Definisi fitur Tahap 3 tidak diubah."
+      },
+      "pae": {
+        "shape": [
+          154,
+          154
+        ],
+        "min": 0.0,
+        "max": 29.0,
+        "mean": 2.672,
+        "median": 2.0,
+        "percentiles": {
+          "1": 1.0,
+          "5": 1.0,
+          "25": 2.0,
+          "50": 2.0,
+          "75": 3.0,
+          "95": 5.0,
+          "99": 18.0
+        },
+        "orientation_note": "Matriks dipakai apa adanya dari paeDocUrl AFDB (tanpa transpose/reshape). Baris i dan kolom j = posisi residu 1..N (penomoran terverifikasi). Interpretasi umum AlphaFold: elemen [i][j] = estimasi error posisi residu i bila struktur di-align pada residu j."
+      },
+      "structure_bbox_angstrom": [
+        40.48,
+        40.83,
+        40.78
+      ],
+      "status": "PASS"
+    },
+    {
+      "protein_id": "P99999",
+      "uniprot_accession": "P99999",
+      "afdb_id": "AF-P99999-F1",
+      "afdb_version": "6",
+      "inputs": {
+        "structure": {
+          "path": "data/alphafold_db/raw/AF-P99999-F1-model_v6.cif",
+          "sha256": "1b48d4bc17398c7e4f54d18b1c401fedc099aea22adbb8b6e943755acd8e3605"
+        },
+        "pae_doc": {
+          "path": "data/alphafold_db/raw/AF-P99999-F1-predicted_aligned_error_v6.json",
+          "sha256": "b422bfda4884d8c758d00488274ac46e505f913c27f686e052f9cbdc6c3a9faa"
+        },
+        "api_metadata": {
+          "path": "data/alphafold_db/metadata/api_P99999.json",
+          "sha256": "8c22ce8a06dbda5b2486af88a85373230535d85333de6c6fc923df06fd8ff594"
+        }
+      },
+      "n_residues": 105,
+      "n_chains": 1,
+      "chain_ids": [
+        "A"
+      ],
+      "n_atoms": 824,
+      "sequence": "MGDVEKGKKIFIMKCSQCHTVEKGGKHKTGPNLHGLFGRKTGQAPGYSYTAANKNKGIIWGEDTLMEYLENPKKYIPGTKMIFVGIKKKEERADLIAYLKKATNE",
+      "residue_numbering": "1..N berurutan (diverifikasi); residue_id == sequence_position",
+      "sequence_checksum_md5_match": true,
+      "plddt": {
+        "ca_mean": 97.932,
+        "ca_min": 75.75,
+        "ca_max": 98.88,
+        "ca_frac_ge_70": 1.0,
+        "ca_frac_ge_90": 0.981,
+        "atom_mean_global": 97.948,
+        "source_channel": "kolom B-factor file CIF (channel resmi AFDB; pLDDT disimpan di B-factor). Definisi fitur Tahap 3 tidak diubah."
+      },
+      "pae": {
+        "shape": [
+          105,
+          105
+        ],
+        "min": 0.0,
+        "max": 23.0,
+        "mean": 2.059,
+        "median": 2.0,
+        "percentiles": {
+          "1": 1.0,
+          "5": 1.0,
+          "25": 1.0,
+          "50": 2.0,
+          "75": 2.0,
+          "95": 3.0,
+          "99": 11.0
+        },
+        "orientation_note": "Matriks dipakai apa adanya dari paeDocUrl AFDB (tanpa transpose/reshape). Baris i dan kolom j = posisi residu 1..N (penomoran terverifikasi). Interpretasi umum AlphaFold: elemen [i][j] = estimasi error posisi residu i bila struktur di-align pada residu j."
+      },
+      "structure_bbox_angstrom": [
+        37.42,
+        33.71,
+        34.77
+      ],
+      "status": "PASS"
+    },
+    {
+      "protein_id": "P0DP23",
+      "uniprot_accession": "P0DP23",
+      "afdb_id": "AF-P0DP23-F1",
+      "afdb_version": "6",
+      "inputs": {
+        "structure": {
+          "path": "data/alphafold_db/raw/AF-P0DP23-F1-model_v6.cif",
+          "sha256": "e698114902202d87b9cf6ea7656fbf433db61571d085593905885de6389b475f"
+        },
+        "pae_doc": {
+          "path": "data/alphafold_db/raw/AF-P0DP23-F1-predicted_aligned_error_v6.json",
+          "sha256": "44c3f6c438ee29fe9d6c7da72e916904f3103c5471aae93747a586f7d1b49652"
+        },
+        "api_metadata": {
+          "path": "data/alphafold_db/metadata/api_P0DP23.json",
+          "sha256": "1ff7aa78a117f2a4a1b6964ea51698516ce2f6362005c7d3e9dc2de77a42fde4"
+        }
+      },
+      "n_residues": 149,
+      "n_chains": 1,
+      "chain_ids": [
+        "A"
+      ],
+      "n_atoms": 1174,
+      "sequence": "MADQLTEEQIAEFKEAFSLFDKDGDGTITTKELGTVMRSLGQNPTEAELQDMINEVDADGNGTIDFPEFLTMMARKMKDTDSEEEIREAFRVFDKDGNGYISAAELRHVMTNLGEKLTDEEVDEMIREADIDGDGQVNYEEFVQMMTAK",
+      "residue_numbering": "1..N berurutan (diverifikasi); residue_id == sequence_position",
+      "sequence_checksum_md5_match": true,
+      "plddt": {
+        "ca_mean": 85.241,
+        "ca_min": 41.81,
+        "ca_max": 95.88,
+        "ca_frac_ge_70": 0.8993,
+        "ca_frac_ge_90": 0.443,
+        "atom_mean_global": 85.218,
+        "source_channel": "kolom B-factor file CIF (channel resmi AFDB; pLDDT disimpan di B-factor). Definisi fitur Tahap 3 tidak diubah."
+      },
+      "pae": {
+        "shape": [
+          149,
+          149
+        ],
+        "min": 0.0,
+        "max": 31.0,
+        "mean": 13.281,
+        "median": 13.0,
+        "percentiles": {
+          "1": 1.0,
+          "5": 2.0,
+          "25": 4.0,
+          "50": 13.0,
+          "75": 22.0,
+          "95": 26.0,
+          "99": 28.0
+        },
+        "orientation_note": "Matriks dipakai apa adanya dari paeDocUrl AFDB (tanpa transpose/reshape). Baris i dan kolom j = posisi residu 1..N (penomoran terverifikasi). Interpretasi umum AlphaFold: elemen [i][j] = estimasi error posisi residu i bila struktur di-align pada residu j."
+      },
+      "structure_bbox_angstrom": [
+        47.61,
+        37.5,
+        61.44
+      ],
+      "status": "PASS"
+    },
+    {
+      "protein_id": "P00441",
+      "uniprot_accession": "P00441",
+      "afdb_id": "AF-P00441-F1",
+      "afdb_version": "6",
+      "inputs": {
+        "structure": {
+          "path": "data/alphafold_db/raw/AF-P00441-F1-model_v6.cif",
+          "sha256": "fd186af7f5fdd9214cee40653bed71760fa53f0922d3438f9ce62e74c64f0edb"
+        },
+        "pae_doc": {
+          "path": "data/alphafold_db/raw/AF-P00441-F1-predicted_aligned_error_v6.json",
+          "sha256": "ab6998cc394243b3ad7d5ed29b9ce6ea5b9a65c38584d8d8b98c77bac8e5de90"
+        },
+        "api_metadata": {
+          "path": "data/alphafold_db/metadata/api_P00441.json",
+          "sha256": "36b9eb978cd1420611150d10464734ac3dd867a2ac34dd6f57b94ee447519775"
+        }
+      },
+      "n_residues": 154,
+      "n_chains": 1,
+      "chain_ids": [
+        "A"
+      ],
+      "n_atoms": 1118,
+      "sequence": "MATKAVCVLKGDGPVQGIINFEQKESNGPVKVWGSIKGLTEGLHGFHVHEFGDNTAGCTSAGPHFNPLSRKHGGPKDEERHVGDLGNVTADKDGVADVSIEDSVISLSGDHCIIGRTLVVHEKADDLGKGGNEESTKTGNAGSRLACGVIGIAQ",
+      "residue_numbering": "1..N berurutan (diverifikasi); residue_id == sequence_position",
+      "sequence_checksum_md5_match": true,
+      "plddt": {
+        "ca_mean": 97.925,
+        "ca_min": 70.94,
+        "ca_max": 98.94,
+        "ca_frac_ge_70": 1.0,
+        "ca_frac_ge_90": 0.9805,
+        "atom_mean_global": 97.955,
+        "source_channel": "kolom B-factor file CIF (channel resmi AFDB; pLDDT disimpan di B-factor). Definisi fitur Tahap 3 tidak diubah."
+      },
+      "pae": {
+        "shape": [
+          154,
+          154
+        ],
+        "min": 0.0,
+        "max": 24.0,
+        "mean": 2.183,
+        "median": 2.0,
+        "percentiles": {
+          "1": 1.0,
+          "5": 1.0,
+          "25": 1.0,
+          "50": 2.0,
+          "75": 2.0,
+          "95": 4.0,
+          "99": 12.0
+        },
+        "orientation_note": "Matriks dipakai apa adanya dari paeDocUrl AFDB (tanpa transpose/reshape). Baris i dan kolom j = posisi residu 1..N (penomoran terverifikasi). Interpretasi umum AlphaFold: elemen [i][j] = estimasi error posisi residu i bila struktur di-align pada residu j."
+      },
+      "structure_bbox_angstrom": [
+        42.19,
+        34.71,
+        42.0
+      ],
+      "status": "PASS"
+    },
+    {
+      "protein_id": "P61823",
+      "uniprot_accession": "P61823",
+      "afdb_id": "AF-P61823-F1",
+      "afdb_version": "6",
+      "inputs": {
+        "structure": {
+          "path": "data/alphafold_db/raw/AF-P61823-F1-model_v6.cif",
+          "sha256": "9f20e86e00ceb3f6d2020cf3ac4b5c17a340be5a2b56dd89e20b9edb9a7dd9b5"
+        },
+        "pae_doc": {
+          "path": "data/alphafold_db/raw/AF-P61823-F1-predicted_aligned_error_v6.json",
+          "sha256": "b3258e465f4edb5f3b9a1db02547927776ec28579dadd5c3e05a47c3b5173b4f"
+        },
+        "api_metadata": {
+          "path": "data/alphafold_db/metadata/api_P61823.json",
+          "sha256": "28779bfd7bc120c17dd765bc74097c94b96d86f7de8a698d92aa77d3df08754c"
+        }
+      },
+      "n_residues": 150,
+      "n_chains": 1,
+      "chain_ids": [
+        "A"
+      ],
+      "n_atoms": 1145,
+      "sequence": "MALKSLVLLSLLVLVLLLVRVQPSLGKETAAAKFERQHMDSSTSAASSSNYCNQMMKSRNLTKDRCKPVNTFVHESLADVQAVCSQKNVACKNGQTNCYQSYSTMSITDCRETGSSKYPNCAYKTTQANKHIIVACEGNPYVPVHFDASV",
+      "residue_numbering": "1..N berurutan (diverifikasi); residue_id == sequence_position",
+      "sequence_checksum_md5_match": true,
+      "plddt": {
+        "ca_mean": 94.043,
+        "ca_min": 56.59,
+        "ca_max": 98.94,
+        "ca_frac_ge_70": 0.94,
+        "ca_frac_ge_90": 0.82,
+        "atom_mean_global": 94.157,
+        "source_channel": "kolom B-factor file CIF (channel resmi AFDB; pLDDT disimpan di B-factor). Definisi fitur Tahap 3 tidak diubah."
+      },
+      "pae": {
+        "shape": [
+          150,
+          150
+        ],
+        "min": 0.0,
+        "max": 31.0,
+        "mean": 8.159,
+        "median": 2.0,
+        "percentiles": {
+          "1": 1.0,
+          "5": 1.0,
+          "25": 1.0,
+          "50": 2.0,
+          "75": 17.0,
+          "95": 28.0,
+          "99": 29.0
+        },
+        "orientation_note": "Matriks dipakai apa adanya dari paeDocUrl AFDB (tanpa transpose/reshape). Baris i dan kolom j = posisi residu 1..N (penomoran terverifikasi). Interpretasi umum AlphaFold: elemen [i][j] = estimasi error posisi residu i bila struktur di-align pada residu j."
+      },
+      "structure_bbox_angstrom": [
+        45.54,
+        76.46,
+        42.18
+      ],
+      "status": "PASS"
+    },
+    {
+      "protein_id": "P42212",
+      "uniprot_accession": "P42212",
+      "afdb_id": "AF-P42212-F1",
+      "afdb_version": "6",
+      "inputs": {
+        "structure": {
+          "path": "data/alphafold_db/raw/AF-P42212-F1-model_v6.cif",
+          "sha256": "20fee8dd4053d5aa1dc43acd68810faccf68b942f41220d375bfa6307daaa6d2"
+        },
+        "pae_doc": {
+          "path": "data/alphafold_db/raw/AF-P42212-F1-predicted_aligned_error_v6.json",
+          "sha256": "b2838a1e0d38a31e133bec1f176c54578410f4b8a7b009b648b0c621a682ee88"
+        },
+        "api_metadata": {
+          "path": "data/alphafold_db/metadata/api_P42212.json",
+          "sha256": "3882b87df875a9cdd61f8eecc528043ee29d9f6000efd6b2e2e387157f009f35"
+        }
+      },
+      "n_residues": 238,
+      "n_chains": 1,
+      "chain_ids": [
+        "A"
+      ],
+      "n_atoms": 1896,
+      "sequence": "MSKGEELFTGVVPILVELDGDVNGHKFSVSGEGEGDATYGKLTLKFICTTGKLPVPWPTLVTTFSYGVQCFSRYPDHMKQHDFFKSAMPEGYVQERTIFFKDDGNYKTRAEVKFEGDTLVNRIELKGIDFKEDGNILGHKLEYNYNSHNVYIMADKQKNGIKVNFKIRHNIEDGSVQLADHYQQNTPIGDGPVLLPDNHYLSTQSALSKDPNEKRDHMVLLEFVTAAGITHGMDELYK",
+      "residue_numbering": "1..N berurutan (diverifikasi); residue_id == sequence_position",
+      "sequence_checksum_md5_match": true,
+      "plddt": {
+        "ca_mean": 96.64,
+        "ca_min": 63.56,
+        "ca_max": 98.88,
+        "ca_frac_ge_70": 0.9874,
+        "ca_frac_ge_90": 0.9328,
+        "atom_mean_global": 96.649,
+        "source_channel": "kolom B-factor file CIF (channel resmi AFDB; pLDDT disimpan di B-factor). Definisi fitur Tahap 3 tidak diubah."
+      },
+      "pae": {
+        "shape": [
+          238,
+          238
+        ],
+        "min": 0.0,
+        "max": 25.0,
+        "mean": 2.901,
+        "median": 2.0,
+        "percentiles": {
+          "1": 1.0,
+          "5": 1.0,
+          "25": 2.0,
+          "50": 2.0,
+          "75": 3.0,
+          "95": 8.0,
+          "99": 19.0
+        },
+        "orientation_note": "Matriks dipakai apa adanya dari paeDocUrl AFDB (tanpa transpose/reshape). Baris i dan kolom j = posisi residu 1..N (penomoran terverifikasi). Interpretasi umum AlphaFold: elemen [i][j] = estimasi error posisi residu i bila struktur di-align pada residu j."
+      },
+      "structure_bbox_angstrom": [
+        46.56,
+        35.96,
+        57.88
+      ],
+      "status": "PASS"
+    }
+  ],
+  "notes": [
+    "Dataset ini hanya berisi 7 protein AFDB yang disetujui pada manifest Tahap 5 (frozen); tidak ada protein tambahan.",
+    "Semua fitur adalah turunan PREDIKSI AlphaFold DB v6; tidak ada data eksperimen.",
+    "2 fitur turunan contact dari skema Tahap 3 (28 kolom) tidak disertakan karena sumbernya (contact_probs) tidak tersedia di AFDB - lihat schema.excluded_features.",
+    "pLDDT tinggi / PAE rendah = keyakinan MODEL, bukan bukti fungsi atau kebenaran biologis.",
+    "Ini pipeline validation, bukan tahap ML dan bukan klaim biologis."
+  ]
+}

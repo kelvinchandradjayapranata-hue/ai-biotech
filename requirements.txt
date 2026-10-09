@@ -1,0 +1,9 @@
+# ---- Inti analisis (tahap 1) ----
+biopython>=1.80
+pandas>=2.0
+numpy>=1.26
+matplotlib>=3.8
+
+# ---- Untuk menjalankan notebook (kernel + eksekusi headless) ----
+ipykernel>=6.29
+nbclient>=0.10
