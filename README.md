@@ -18,11 +18,13 @@
 
 ## About the Project
 
-This project builds a **data pipeline for protein structure analysis**: it starts from protein
+This is an **early-stage AI for Biotechnology (AI4Bio) research project** in computational
+biology, currently focused on **protein structure analysis, residue-level feature extraction,
+dataset construction, and validation**. It builds a **data pipeline** that starts from protein
 sequences, uses AlphaFold predictions (AlphaFold Server for a single reference protein, and the
 AlphaFold Database for a curated 7-protein set), and ends with a **validated, residue-level
-feature dataset** that is ready to support future machine-learning work. The stack is deliberately
-small and inspectable — Python, Biopython, pandas, NumPy, matplotlib.
+feature dataset**: the foundation for future AI-assisted biological research. The stack is
+deliberately small and inspectable — Python, Biopython, pandas, NumPy, matplotlib.
 
 Every stage is gated by integrity tests that **recompute critical values from the raw prediction
 files** instead of trusting derived outputs, and every output is documented — column definitions,
@@ -34,6 +36,73 @@ project. It is **not** a finished drug-discovery system: there is no molecular d
 dynamics, no compound screening, and no wet-lab validation. **No ML model has been trained yet** —
 Stage 7 (simple ML experiments) intentionally comes only after the dataset review and a defined
 research question.
+
+## Research Objectives
+
+The project investigates how protein structural information can be transformed into **reliable,
+machine-readable features** for future computational biology and AI research. The premise is
+deliberately bottom-up: before any model is trained, the data itself — its provenance, column
+definitions, units, and integrity — must be trustworthy.
+
+**Established work.** Protein sequence and structure analysis of a reference protein,
+residue-level feature extraction with fully documented definitions and units, controlled
+construction of a 7-protein dataset from the AlphaFold Database, and integrity validation
+(checksums, sequence matching, and recomputation of derived values from the raw prediction
+files).
+
+**Future goals.** Once the dataset review is complete and a measurable biological question is
+defined, the project aims to establish baselines, expand the dataset beyond the current
+validation set, design leakage-resistant evaluation (protein-level splits), and evaluate
+appropriate AI methods. No biological hypothesis, label, or trained model exists yet —
+intentionally, so that the question is defined before the modeling. See
+[Limitations and Future Work](#limitations-and-future-work).
+
+## Research FAQ
+
+**What is this project about?**
+An early-stage AI4Bio / computational biology research project. It builds and validates a data
+pipeline that turns protein sequences into AlphaFold-predicted structures and then into a
+machine-readable, residue-level feature dataset (currently 7 proteins, 1,098 residues × 29
+columns) — engineering groundwork for future AI-assisted biological research.
+
+**What scientific problem does it aim to address?**
+How protein structural information — including the confidence measures that come with predicted
+structures (pLDDT, PAE) — can be turned into reliable, well-documented, machine-readable
+features suitable for AI research. The current work addresses *data quality and reproducibility*;
+a specific biological hypothesis is not yet part of the project.
+
+**What has been completed so far?**
+Stages 1–6: sequence analysis, structure analysis (ubiquitin reference), residue-level feature
+extraction (ubiquitin, 76 × 28), dataset planning (7 proteins, 6 functional categories), the
+controlled AlphaFold DB download and validation (14 v6 files, checksums and sequences verified),
+and the multi-protein dataset (1,098 residues × 29 columns). All four test suites pass — 72/72
+checks in total (20 + 12 + 16 + 24). Stage 6 is complete but still awaiting review; no machine
+learning has been done.
+
+**Is this already an AI model for drug discovery?**
+No. There is no trained model, no molecular docking, no molecular dynamics, no compound
+screening, and no wet-lab validation. AlphaFold itself is a deep-learning system, and its
+predictions are the data this project works with — but the project's own outputs are validated
+datasets and analysis, not drug-discovery results.
+
+**Why might HPC or powerful GPUs be useful?**
+Not for the current pipeline — it is small and runs on a standard machine without a GPU. HPC or
+GPU resources could become relevant only if the project later moves to larger-scale protein
+representation learning or model training and evaluation. Whether such hardware is warranted
+depends on dataset size, model architecture, memory requirements, and experimental design — more
+compute does not by itself produce better science. See
+[Computing Resources and Research Support](#computing-resources-and-research-support).
+
+**What are the next research goals?**
+Complete the pending Stage 6 review; define a measurable biological question and a label from
+official annotations (e.g., UniProt GO terms or EC numbers — not yet decided); expand the
+dataset; establish baselines; and design leakage-resistant evaluation (protein-level splits)
+before selecting and training appropriate AI methods.
+
+**Is the project open to academic collaboration?**
+Yes. The pipeline, dataset, schema, and test suites are public and reproducible, and the project
+welcomes academic collaboration, mentorship, and discussions about research direction or
+computing support. Reach out through the repository's GitHub page (e.g., by opening an issue).
 
 ## Research Pipeline
 
@@ -244,28 +313,77 @@ confidence — not biological truth. A high-confidence prediction can still be w
 a structure requires real experiments (X-ray crystallography, NMR, cryo-EM, and so on). Nothing
 in this repository should be read as experimentally validated structure or function.
 
-## Limitations
+## Limitations and Future Work
 
-- **No trained ML model.** Stage 7 has not started; Stage 6 outputs are still under review.
-- **No drug-discovery components.** No molecular docking, no molecular dynamics, no compound
-  screening, and no wet-lab validation exist in this project.
-- **Small, narrow dataset.** 7 single-chain proteins (1,098 residues, 5 human + 2 non-human) are
-  a pipeline-validation set — not a basis for biological generalization.
+### Completed (Stages 1–6)
+
+Protein data retrieval (AlphaFold Server reference structure; 7 curated AlphaFold DB entries),
+structure validation (checksums, sequence matching, PAE shape), residue-level feature extraction
+(ubiquitin 76 × 28; multi-protein 1,098 × 29), dataset construction, and the integrity test
+suites (72 checks across Stages 3–6, all passing). Details and evidence in
+[Current Results](#current-results).
+
+### Not yet completed
+
+None of the following exist yet, and none are claimed:
+
+- **Trained predictive models.** No training, no train/test split, no evaluation metrics —
+  Stage 7 has not started.
+- **Molecular docking, molecular dynamics, compound screening.** No such analysis exists in this
+  project.
+- **Experimental validation.** No wet-lab work, and the predictions have not been compared
+  against experimental (e.g., PDB) structures.
+
+### Current limitations
+
+- **Small, narrow dataset.** 7 single-chain proteins (1,098 residues; 5 human + 2 non-human) are
+  a pipeline-validation set — not a basis for biological generalization. Residues within one
+  protein are strongly correlated, so 1,098 rows are not 1,098 independent samples.
 - **Prediction-only ground truth.** The dataset stores AlphaFold predictions with no attached
   experimental reference structures.
 - **Single-chain only.** No complexes, no ligands, no post-translational modifications.
 
-## Roadmap
+### Future direction
 
-1. **Dataset quality review** — complete the pending Stage 6 review (schema, per-protein
-   statistics, exclusions).
-2. **Feature consistency checks** — verify that feature definitions and units match across the
+1. **Complete the Stage 6 review** — dataset schema, per-protein statistics, documented
+   exclusions (still pending).
+2. **Verify feature consistency** — confirm that feature definitions and units match across the
    Stage 3 and Stage 6 tables.
-3. **Define a biological research question** — a target and hypothesis this dataset can actually
-   support.
-4. **Establish an ML baseline** — only once the data and the question justify one.
-5. **Evaluate only when suitable** — with metrics chosen for the actual question, and limitations
-   reported honestly.
+3. **Define a measurable biological research question** — a target and hypothesis this data can
+   actually support, with labels drawn from official annotations (e.g., UniProt GO terms or EC
+   numbers; not yet decided).
+4. **Expand the dataset** beyond the current 7-protein validation set.
+5. **Design leakage-resistant evaluation** — for example, splitting at the protein level rather
+   than the residue level.
+6. **Establish baselines and select appropriate AI methods** — only once the question, labels,
+   and splits are fixed, with limitations reported honestly.
+
+## Computing Resources and Research Support
+
+All work in this repository has been conducted at a limited scale: 7 proteins, 1,098 residue
+rows, and about 1.5 MB of prediction files, processed end-to-end on a standard machine with plain
+Python libraries (Biopython, pandas, NumPy, matplotlib). **No GPU or HPC resource is required to
+run or reproduce the current pipeline** — a laptop suffices.
+
+Future stages may differ. If the project moves toward larger-scale protein representation
+learning, model training and evaluation, or other computationally demanding experiments —
+depending on the final scientific question — then GPU or HPC access could become relevant. Which
+hardware is appropriate is a function of dataset size, model architecture, memory requirements,
+and experimental design; access to powerful hardware does not by itself produce better scientific
+results.
+
+If the research direction warrants it, the project would benefit from:
+
+- **HPC infrastructure and GPU access** — for future large-scale experiments, once a concrete
+  experimental design justifies them.
+- **Academic mentorship** — guidance on framing a tractable biological question and rigorous,
+  leakage-resistant evaluation.
+- **Research collaboration** — partners in computational biology and machine learning for
+  methodological feedback and joint work.
+
+**Status:** no HPC application has been submitted, and no institution has agreed to provide
+computing resources. This section is an expression of interest in future collaboration — not a
+claim of existing support.
 
 ## Documentation & Acknowledgments
 
