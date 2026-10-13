@@ -385,6 +385,16 @@ If the research direction warrants it, the project would benefit from:
 computing resources. This section is an expression of interest in future collaboration — not a
 claim of existing support.
 
+## Author
+
+Author: Kelvin Chandra Djayapranata — [GitHub](https://github.com/kelvinchandradjayapranata-hue) · [LinkedIn](https://cn.linkedin.com/in/kelvin-chandra-djaya-pranata-1abb1742a).
+
+This repository is an early-stage AI4Bio research project focused on protein structure
+analysis, residue-level feature extraction, dataset construction, and validation.
+
+Related repository: [why-biopython-matters](https://github.com/kelvinchandradjayapranata-hue/why-biopython-matters) —
+a technical guide to Biopython's role in modern bioinformatics and AI4Bio.
+
 ## Documentation & Acknowledgments
 
 | Document | Contents |
