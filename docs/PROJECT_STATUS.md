@@ -9,7 +9,7 @@ diubah, tidak ada eksperimen baru dijalankan, tidak ada unduhan dilakukan.
 
 ```
 PROJECT STATUS:
-STAGE 1–9.2 AUDITED — STAGE 8.2 BENCHMARK LOCKED
+STAGE 1–9.3 AUDITED — STAGE 8.2 BENCHMARK LOCKED
 DATA PIPELINE: VALIDATED
 BIOLOGICAL ML: BASELINE REPRODUCED — NO GENERALIZATION CLAIM
 ```
@@ -31,8 +31,20 @@ BIOLOGICAL ML: BASELINE REPRODUCED — NO GENERALIZATION CLAIM
 > klasifikasi histidin), sehingga Stage 9.2 adalah dataset terpisah dan **tidak
 > langsung sebanding** dengan benchmark Stage 8.2. Rincian bukti di §16.
 >
-> Bagian 1, 2, 9, 10, 11, 12, 13, 15, 16 (baru), dan 17 di bawah sudah diperbarui;
-> bagian 3–8 tetap merupakan catatan historis Stage 1–6.
+> **Update 2026-10-20 — Stage 9.3.** Dataset Stage 9.2 direkonsiliasi dengan definisi
+> frozen Stage 3/8.2: `pae_local_mean_k10` dihitung `|i-j| ≤ 10, j ≠ i` dan histidin
+> dikembalikan ke `basic`. Artefak diaudit independen dan disalin ke
+> `results/dataset/stage93_realigned_dataset.csv` (SHA256
+> `6f0357858638c57630e0276fb8e46339a16f001e54005dba34adb5b5e3f37f5a`; 3.960 × 12;
+> 14 protein; 129 positif). Seluruh fitur struktural dan label cocok 3.960/3.960
+> dengan AFDB/UniProt; `target_y` identik dengan Stage 9.2. Metrik LOGO-CV: XGB median
+> ROC 0,7264 / PR 0,1684, pooled 0,6411 / 0,0858; RF median 0,7518 / 0,1763, pooled
+> 0,6575 / 0,0912. Median, pooled, dan gain reproduce; **IQR PR yang dilaporkan tidak
+> reproduce** (lihat §17.4). Stage 8.2 tetap benchmark beku; Stage 9.3 adalah ekspansi
+> terpisah, bukan pengganti benchmark.
+>
+> Bagian 1, 2, 9, 10, 11, 12, 13, 14, 15, 16, 17 (baru), dan 18 di bawah sudah
+> diperbarui; bagian 3–8 tetap merupakan catatan historis Stage 1–6.
 
 ---
 
@@ -66,6 +78,13 @@ Yang **sudah tercapai** dan terverifikasi:
   Random Forest dalam toleransi ≤0,0011. **Catatan penting:** dua definisi fitur
   berbeda dari benchmark Stage 3/8.2 (lihat §16), sehingga angka Stage 9.2 tidak
   boleh dibandingkan langsung dengan Stage 8.2.
+- **Stage 9.3:** realignment dataset Stage 9.2 ke definisi frozen Stage 3/8.2.
+  `pae_local_mean_k10` memakai `|i-j| ≤ 10, j ≠ i` dan histidin = `basic`; seluruh
+  fitur struktural dan label cocok 3.960/3.960 dengan AFDB/UniProt, dan `target_y`
+  identik dengan Stage 9.2. Metrik LOGO-CV: XGB median ROC 0,7264 / PR 0,1684,
+  pooled 0,6411 / 0,0858; RF median 0,7518 / 0,1763, pooled 0,6575 / 0,0912.
+  Median/pooled/gain reproduce; IQR PR yang dilaporkan tidak reproduce (§17.4).
+  Stage 9.3 adalah artefak baru, **bukan** pengganti benchmark Stage 8.2.
 
 Yang **BELUM tercapai** (dan tidak diklaim):
 
@@ -79,16 +98,15 @@ Yang **BELUM tercapai** (dan tidak diklaim):
   independen. Belum ada uji kalibrasi probabilitas lintas-protein.
 - **Label masih terbatas pada A+B.** Belum ada label multi-kelas, GO terms, EC numbers,
   atau skema label alternatif.
-- **Stage 9.2 bukan validasi eksternal dan bukan klaim generalisasi.** 14 protein /
-  129 positif masih kecil, tidak ada holdout eksternal, dan dua definisi fitur berbeda
-  dari benchmark Stage 8.2. Pooled ROC-AUC ≈0,65 pada dataset ini belum membuktikan
-  kemampuan prediksi pada protein di luar dataset.
+- **Stage 9.2 dan Stage 9.3 bukan validasi eksternal dan bukan klaim generalisasi.**
+  14 protein / 129 positif masih kecil dan tidak ada holdout eksternal. Stage 9.3 sudah
+  memakai definisi fitur frozen, tetapi pooled ROC-AUC ≈0,64–0,66 pada dataset ini
+  belum membuktikan kemampuan prediksi pada protein di luar dataset.
 
 Posisi jujur: **infrastruktur data selesai dan tervalidasi; benchmark ML baseline sudah
-ada dan terverifikasi, ditambah ekspansi Stage 9.2 yang nyata dan diaudit — tetapi belum
-ada bukti generalisasi biologis.** Fokus berikutnya adalah rekonsiliasi definisi fitur,
-penguncian benchmark baru bila diputuskan, dan validasi eksternal — bukan mengklaim
-performa.
+ada dan terverifikasi, ditambah ekspansi Stage 9.2 dan realignment Stage 9.3 yang nyata
+dan diaudit — tetapi belum ada bukti generalisasi biologis.** Fokus berikutnya adalah
+validasi eksternal dan kalibrasi lintas-protein — bukan mengklaim performa.
 
 ---
 
@@ -102,8 +120,9 @@ performa.
 | Feature extraction | **BERHASIL** | 1098 × 29 kolom, 24/24 test PASS |
 | Reproducibility | **BERHASIL** | Output dataset byte-identical antar-run |
 | Predictive biological AI / ML | **BASELINE ADA; GENERALISASI BELUM** | Stage 8.2 LOGO-CV direproduksi; pooled ROC 0,5368/0,5062; median/IQR di `BENCHMARK_DATASET_LOCK.md` |
-| Label biologis (y) | **ADA — A+B** | `target_y` = UniProt Active site + Binding site; 46 positif (Stage 7), 129 positif (Stage 9.2); audit label 0 mismatch di kedua dataset |
+| Label biologis (y) | **ADA — A+B** | `target_y` = UniProt Active site + Binding site; 46 positif (Stage 7), 129 positif (Stage 9.2/9.3); audit label 0 mismatch di ketiga dataset |
 | Ekspansi dataset (Stage 9.2) | **AUDITED — REAL AFDB, DENGAN CATATAN** | 14 protein / 3.960 residu; fitur struktural & label cocok dengan sumber; 2 definisi fitur menyimpang dari Stage 8.2 (§16) |
+| Realignment dataset (Stage 9.3) | **AUDITED — DEFINISI FROZEN** | 14 protein / 3.960 residu; H = `basic`; `pae_local_mean_k10` = `\|i-j\| ≤ 10, j ≠ i`; 0 mismatch fitur/label; median/pooled/gain reproduce, IQR PR tidak (§17) |
 | Klaim ilmiah/biologis | **TIDAK ADA (sengaja)** | Semua laporan menyatakan fitur = prediksi model; baseline bukan klaim fungsi |
 
 Ringkas: **A/B/C tercapai; D ada sebagai baseline terverifikasi tetapi belum
@@ -226,13 +245,15 @@ menunjukkan generalisasi; E/F/G tetap belum dan diakui eksplisit** (lihat bagian
 | 7 — Dataset & label | PASS (LOCKED 2026-10-20) | 1098 × 27; label A+B; 46 positif (4,19%); 7-fold LOGO; SHA256 `34f9dd…f61` | `results/dataset/stage7_processed_dataset.csv`, `docs/BENCHMARK_DATASET_LOCK.md` | Benchmark resmi terkunci; 25 kolom identik Stage 6; label audit 7/7 |
 | 8.2 — LOGO-CV baseline | PASS (VERIFIED) | 13 fitur; XGB median ROC 0,7185 / PR 0,2144; RF 0,6608 / 0,2647; pooled XGB 0,5368 / 0,0916, RF 0,5062 / 0,1028 | `docs/BENCHMARK_DATASET_LOCK.md` §7 | Baseline reproducible; XGB cocok persis dengan ringkasan Stage 8.2; **bukan bukti generalisasi** |
 | 9.2 — Real AFDB expansion | AUDITED (2026-10-20) | 3.960 × 12; 14 protein; 129 positif (3,26%); 13 fitur; XGB median ROC 0,7092 / PR 0,1509, RF 0,7305 / 0,1852; pooled XGB 0,6484 / 0,1022, RF 0,6523 / 0,0996 | `results/dataset/stage9_processed_dataset.csv`, §16 | Ekspansi nyata dari AFDB; metrik reproducible; **bukan benchmark terkunci** dan **tidak langsung sebanding** dengan Stage 8.2 karena 2 definisi fitur berbeda |
+| 9.3 — Realigned real-AFDB | AUDITED (2026-10-20) | 3.960 × 12; 14 protein; 129 positif (3,26%); 13 fitur frozen; XGB median ROC 0,7264 / PR 0,1684, RF 0,7518 / 0,1763; pooled XGB 0,6411 / 0,0858, RF 0,6575 / 0,0912; SHA256 `6f0357…7f5a` | `results/dataset/stage93_realigned_dataset.csv`, §17 | Definisi fitur Stage 3/8.2 dipulihkan; fitur & label 0 mismatch; median/pooled/gain reproduce; **IQR PR dilaporkan tidak reproduce**; tetap **bukan pengganti benchmark Stage 8.2** |
 
 **Batas tegas antar baris:** sampai Stage 6, semua capaian bersifat
 **engineering + integritas data + ekstraksi fitur**. Stage 7 menambahkan **benchmark
 terkunci** (dataset + label), dan Stage 8.2 menambahkan **baseline ML yang
-direproduksi**. Stage 9.2 menambahkan **ekspansi dataset nyata yang diaudit**, tetapi
-belum menjadi benchmark terkunci dan belum mengubah status generalisasi. Tidak ada satu
-pun baris di tabel ini yang merupakan klaim biologis atau bukti generalisasi.
+direproduksi**. Stage 9.2 menambahkan **ekspansi dataset nyata yang diaudit**; Stage 9.3
+merekonstruksinya dengan **definisi fitur frozen**. Keduanya belum menjadi benchmark
+terkunci dan belum mengubah status generalisasi. Tidak ada satu pun baris di tabel ini
+yang merupakan klaim biologis atau bukti generalisasi.
 
 ---
 
@@ -258,14 +279,16 @@ pun baris di tabel ini yang merupakan klaim biologis atau bukti generalisasi.
 | `results/dataset/` | `multi_protein_residue_features.csv` (**1098 × 29**), `multi_protein_summary.csv` (7), `multi_protein_structure_features.json`, `multi_protein_plddt_overview.png`, `multi_protein_pae_overview.png` | 169.141 B / 742 B / 25.597 B / 136.884 B / 926.520 B |
 | `results/dataset/` | **`stage7_processed_dataset.csv`** — benchmark terkunci (**1098 × 27**, 46 positif), SHA256 `34f9dd27…d99f61` | 149.609 B |
 | `results/dataset/` | **`stage9_processed_dataset.csv`** — ekspansi Stage 9.2 teraudit (**3.960 × 12**, 14 protein, 129 positif), SHA256 `58e55a29…e10c` | 363.717 B |
+| `results/dataset/` | **`stage93_realigned_dataset.csv`** — realignment Stage 9.3 teraudit (**3.960 × 12**, 14 protein, 129 positif), SHA256 `6f035785…7f5a` | 319.050 B |
 | `docs/` | **`BENCHMARK_DATASET_LOCK.md`** — kontrak benchmark: skema, label A+B, fold map, protokol & metrik Stage 8.2, kebijakan freeze | — |
 | `results/` | `01_first_protein_analysis.executed.ipynb`, `notebook_plot_1.png` | output notebook |
 | `notebooks/` | `01_first_protein_analysis.ipynb` | materi pembelajaran |
 
-Catatan Stage 9.2: file mentah audit AFDB (28 file CIF/PAE, ~9,3 MB) dan
+Catatan Stage 9.2/9.3: file mentah audit AFDB (28 file CIF/PAE, ~9,3 MB) dan
 `download/stage9_uniprot_metadata.csv` (15 protein, 4.124 baris) **tidak di-commit**;
-hanya `stage9_processed_dataset.csv` yang dipromosikan ke `results/dataset/`. Audit
-dilakukan independen terhadap AFDB/UniProt (bukti di §16).
+hanya `stage9_processed_dataset.csv` dan `stage93_realigned_dataset.csv` yang
+dipromosikan ke `results/dataset/`. Audit dilakukan independen terhadap AFDB/UniProt
+(bukti di §16 dan §17).
 
 ### 10.3 Script
 
@@ -298,6 +321,9 @@ yang tercatat di report/manifest:
 ```
 # Benchmark Stage 7 (dihitung ulang 2026-10-20; sumber: download/)
 34f9dd27b1d11fb35155f1542e066a50110144cd84c62d91a28caa6ab9d99f61  results/dataset/stage7_processed_dataset.csv
+
+# Realignment Stage 9.3 (dihitung ulang 2026-10-20; sumber: download/)
+6f0357858638c57630e0276fb8e46339a16f001e54005dba34adb5b5e3f37f5a  results/dataset/stage93_realigned_dataset.csv
 
 # Output Stage 6 (cocok dengan docs/TAHAP_6_MULTI_PROTEIN_FEATURE_REPORT.md §6)
 390462a42d8befe5588b1019d51b4c4282433b0f712c4377e5191883983d3c1d  multi_protein_residue_features.csv
@@ -424,10 +450,11 @@ Diurutkan dari yang paling berdampak pada tahap berikutnya.
 | C13 | **Provenance gap Stage 7.** Script pembuat `stage7_processed_dataset.csv` tidak ada di `src/`; file datang sebagai artefak dan diaudit ulang terhadap Stage 6 + UniProt | Sedang | `BENCHMARK_DATASET_LOCK.md` §2 | Tercatat; rebuild from source belum one-command |
 | C14 | **Dependensi ML belum dipin.** scikit-learn, xgboost, scipy, dan numpy verifikasi dipasang sementara di luar `.venv`; tidak ada di `requirements.txt` | Sedang (reproducibility) | `BENCHMARK_DATASET_LOCK.md` §8 | Tercatat; keputusan pin dependency = user |
 | C15 | **Toleransi reproduksi RF.** XGB cocok persis; RF median berbeda ≤0,0011 dan pooled ≤0,0085, konsisten dengan perbedaan versi/implementasi scikit-learn | Rendah | `BENCHMARK_DATASET_LOCK.md` §7.4 | Tercatat; nilai resmi dan perbandingan didokumentasikan |
-| C16 | **Definisi `pae_local_mean_k10` Stage 9.2 menyimpang.** Nilai CSV adalah mean `PAE[i, i-5:i+6]` **termasuk residu sendiri** (jendela ±5), bukan `\|i-j\| ≤ 10, j ≠ i` seperti Stage 3/8.2. Seluruh 3.960 nilai berbeda dari definisi frozen (selisih maks 8,1 Å) | Tinggi (komparabilitas) | Audit Stage 9.2 §16 | **TERCATAT:** dataset dipertahankan apa adanya; metrik Stage 9.2 tidak langsung sebanding dengan Stage 8.2 |
-| C17 | **Klasifikasi histidin Stage 9.2 berbeda.** H diberi `amino_acid_type = aromatic` (108 residu), sedangkan tabel frozen Stage 3/8.2 = `basic` | Sedang (fitur one-hot) | Audit Stage 9.2 §16 | **TERCATAT:** tidak diubah; perlu keputusan untuk Stage 9.3 |
+| C16 | **Definisi `pae_local_mean_k10` Stage 9.2 menyimpang.** Nilai CSV adalah mean `PAE[i, i-5:i+6]` **termasuk residu sendiri** (jendela ±5), bukan `\|i-j\| ≤ 10, j ≠ i` seperti Stage 3/8.2. Seluruh 3.960 nilai berbeda dari definisi frozen (selisih maks 8,1 Å) | Tinggi (komparabilitas) | Audit Stage 9.2 §16 | **SELESAI di Stage 9.3:** seluruh 3.960 nilai dihitung ulang dengan definisi frozen (0 mismatch). Stage 9.2 tetap disimpan sebagai artefak historis |
+| C17 | **Klasifikasi histidin Stage 9.2 berbeda.** H diberi `amino_acid_type = aromatic` (108 residu), sedangkan tabel frozen Stage 3/8.2 = `basic` | Sedang (fitur one-hot) | Audit Stage 9.2 §16 | **SELESAI di Stage 9.3:** 108 residu H dikembalikan ke `basic`; satu-satunya perubahan kategori vs Stage 9.2 |
 | C18 | **P00720 tidak ada di AFDB.** Endolysin (164 aa) tidak punya entri AFDB (HTTP 404), sehingga dataset processed berisi 14 protein, bukan 15; metadata 15 protein tetap mencakup P00720 | Rendah–sedang (cakupan) | Audit Stage 9.2 §16 | **TERCATAT:** 14 fold, 13 evaluable (P01308 nol positif) |
 | C19 | **Ringkasan Stage 9.2 salah hitung positif.** Markdown menyebut 123 positif, sedangkan CSV berisi 129 (3,26%). Metrik tetap reproduce karena dihitung dari CSV | Rendah (dokumentasi) | Audit Stage 9.2 §16 | **TERCATAT:** angka yang benar = 129 |
+| C20 | **IQR PR Stage 9.3 tidak reproduce.** Ringkasan menyebut XGB 0,1348 dan RF 0,2259; perhitungan ulang dari per-fold PR (semua metode kuantil yang diuji) menghasilkan 0,1796 dan 0,2461. Median, pooled, dan gain cocok | Sedang (dokumentasi metrik) | Audit Stage 9.3 §17.4 | **TERCATAT:** docs memakai nilai reproduced; nilai klaim dicantumkan sebagai pembanding |
 
 ---
 
@@ -445,6 +472,7 @@ Diurutkan dari yang paling berdampak pada tahap berikutnya.
 | **Verifikasi dalam dokumen ini** | **Parsial** | Hash top-level (bagian 10.4) **dihitung ulang read-only dan cocok persis**. Test suite pipeline data tidak dijalankan ulang; satu-satunya eksperimen baru adalah verifikasi Stage 8.2 (lihat `BENCHMARK_DATASET_LOCK.md` §7) |
 | Reproducibility ML | **Sebagian** | Stage 8.2: XGB cocok persis dengan ringkasan, RF dalam toleransi; harness verifikasi di luar repo dan dependensi belum dipin (`BENCHMARK_DATASET_LOCK.md` §8) |
 | Reproducibility Stage 9.2 | **YA untuk metrik, dengan catatan** | XGB median/pooled cocok persis; RF IQR ROC selisih 0,0011 dan pooled ROC 0,0001; environment pinned (numpy 2.5.4, pandas 3.0.6, scipy 1.18.1, scikit-learn 1.9.1, xgboost 3.4.1) |
+| Reproducibility Stage 9.3 | **YA untuk median/pooled/gain; TIDAK untuk IQR PR** | XGB median/pooled/gain persis; RF median persis, pooled ROC 0,6575 vs klaim 0,6577, pooled PR 0,0912 vs 0,0913; IQR PR reproduced 0,1796/0,2461 vs klaim 0,1348/0,2259 (C20); environment sama |
 
 Catatan: satu-satunya artefak non-deterministik yang diketahui adalah
 `data/alphafold_db/metadata/download_log.txt` (timestamp + path absolut lokal) — file
@@ -454,8 +482,8 @@ log, bukan output dataset, dan tidak dipakai sebagai input analisis.
 
 ## 15. Current Project Position
 
-**Posisi: Stage 9.2 dieksekusi dan diaudit — ekspansi AFDB nyata tersedia;
-benchmark Stage 8.2 tetap terkunci dan tidak berubah.**
+**Posisi: Stage 9.3 dieksekusi dan diaudit — ekspansi AFDB nyata sudah memakai
+definisi fitur frozen; benchmark Stage 8.2 tetap terkunci dan tidak berubah.**
 
 - Stage 1–6 selesai dan terdokumentasi; concern C1, C2, C4, dan C5 sudah ditutup
   untuk benchmark (C3 tetap).
@@ -464,15 +492,17 @@ benchmark Stage 8.2 tetap terkunci dan tidak berubah.**
   median/IQR + pooled tercatat di `docs/BENCHMARK_DATASET_LOCK.md`.
 - Stage 9.2 selesai sebagai ekspansi nyata: 3.960 residu × 12 kolom, 14 protein,
   129 positif; fitur struktural dan label terverifikasi terhadap AFDB/UniProt.
-- **Dua definisi fitur menyimpang dari Stage 3/8.2** (C16–C17), sehingga metrik
-  Stage 9.2 reproducible tetapi **tidak langsung sebanding** dengan Stage 8.2.
-- Dataset AFDB, dataset Stage 7, dan lock Stage 8.2 **tidak diubah**; Stage 9.2
-  adalah artefak baru.
+- **Stage 9.3 menyelesaikan deviasi C16–C17:** `pae_local_mean_k10` memakai
+  `|i-j| ≤ 10, j ≠ i`, histidin = `basic`; seluruh fitur dan label cocok
+  3.960/3.960, dan `target_y` identik dengan Stage 9.2.
+- Metrik Stage 9.3: median/pooled/gain reproduce; IQR PR yang dilaporkan tidak
+  reproduce (C20). Stage 9.3 tetap **bukan pengganti** benchmark Stage 8.2.
+- Dataset AFDB, dataset Stage 7, dan lock Stage 8.2 **tidak diubah**; Stage 9.2 dan
+  Stage 9.3 adalah artefak baru.
 - Belum ada bukti generalisasi; 14 protein / 129 positif masih terlalu kecil dan
   belum ada validasi eksternal.
-- Gate berikutnya: putuskan apakah Stage 9.2 dikunci sebagai benchmark baru dengan
-  definisi terdokumentasi, atau dibangun ulang (Stage 9.3) dengan definisi frozen;
-  setelah itu validasi eksternal.
+- Gate berikutnya: validasi eksternal dan kalibrasi lintas-protein pada dataset
+  Stage 9.3; keputusan lock benchmark baru tetap terbuka.
 
 ---
 
@@ -555,8 +585,8 @@ scikit-learn 1.9.1, xgboost 3.4.1.
   its metrics must not be placed in the same table as Stage 8.2 without a clear
   footnote. Stage 8.2 remains the frozen benchmark.
 - **Not locked:** no SHA256-bearing lock document analogous to
-  `BENCHMARK_DATASET_LOCK.md` has been created for Stage 9.2. That is a user decision
-  (see §17).
+  `BENCHMARK_DATASET_LOCK.md` has been created for Stage 9.2. Stage 9.2 remains a
+  historical artifact; see §17 for the realigned Stage 9.3.
 
 ### 16.6 Audit provenance
 
@@ -567,34 +597,125 @@ and comparisons recorded in this section.
 
 ---
 
-## 17. Recommended Next Step — Stage 9.3 / External Validation
+## 17. Stage 9.3 — Realigned Real-AFDB Expansion (Audited 2026-10-20)
 
-**Rekomendasi: rekonsiliasi definisi fitur dan validasi eksternal, bukan klaim
+**Status: AUDITED — DEFINISI FITUR FROZEN; BUKAN PENGGANTI BENCHMARK STAGE 8.2.**
+
+### 17.1 Artifact identity
+
+| Field | Value |
+|---|---|
+| Authoritative path | `results/dataset/stage93_realigned_dataset.csv` |
+| Source artifact (untracked) | `download/stage93_realigned_dataset.csv` |
+| SHA256 | `6f0357858638c57630e0276fb8e46339a16f001e54005dba34adb5b5e3f37f5a` |
+| Size | 319.050 bytes |
+| Rows | 3.960 residue records (plus header) |
+| Columns | 12 (`target_y` di kolom terakhir; urutan berbeda dari Stage 9.2) |
+| Proteins | 14 (sama dengan Stage 9.2) |
+| Positives (`target_y = 1`) | 129 (3,26%) |
+| Folds | 14 LOGO folds; 13 evaluable (P01308 nol positif) |
+| Label policy | UniProt Active site + Binding site (A+B) |
+| ML features | 13 (7 struktural + 6 one-hot dari `amino_acid_type`) |
+
+### 17.2 Verification performed (independent)
+
+- 28 file AFDB v6 CIF/PAE diunduh ulang dari nol pada 2026-10-20, bersama respons
+  API dan UniProt JSON; tidak memakai file audit Stage 9.2.
+- Identitas: sekuens CIF = `uniprotSequence` 14/14, MD5 `sequenceChecksum` cocok
+  14/14, UniProt = AFDB 14/14, penomoran 1..N, bentuk PAE = (N, N), jumlah baris CSV
+  = jumlah residu CIF. Tidak ada error identitas.
+- Fitur per baris: `amino_acid`, `amino_acid_type` (H = `basic`), `hydropathy_kd`,
+  `charge_ph7`, `n_atoms`, `plddt_ca`, `pae_mean_row`, `pae_mean_col`, dan
+  `pae_local_mean_k10` dengan definisi frozen `|i-j| ≤ 10, j ≠ i` — **0 mismatch dari
+  3.960 baris** (selisih maksimum 0,0 untuk seluruh kolom).
+- Definisi ±5 termasuk-self (yang dipakai Stage 9.2) sengaja diuji sebagai pembanding:
+  seluruh 3.960 nilai **tidak** cocok dengannya (selisih maks 8,1 Å), sehingga kolom
+  ini benar-benar dihitung ulang, bukan disalin.
+- Label: `target_y` cocok dengan anotasi UniProt A+B live untuk 3.960/3.960 baris
+  (0 mismatch).
+- Diff terhadap Stage 9.2: **hanya** `pae_local_mean_k10` (3.960 baris) dan
+  `amino_acid_type` (108 residu H); `target_y` dan seluruh fitur lain identik.
+  Ini konsisten dengan realignment yang dimaksud dan tidak ada perubahan tak terjelaskan.
+
+### 17.3 Reproduction of Stage 9.3 metrics
+
+Protokol: 14-fold LOGO (13 evaluable), 13 fitur, konfigurasi XGBoost/RF yang sama
+dengan Stage 8.2/9.2; median/IQR across evaluable folds; pooled dari 3.960 OOF.
+Environment: numpy 2.5.4, pandas 3.0.6, scipy 1.18.1, scikit-learn 1.9.1,
+xgboost 3.4.1.
+
+| Model | Median ROC (IQR) | Median PR (IQR) | Median gain | Pooled ROC | Pooled PR (gain) |
+|---|---:|---:|---:|---:|---:|
+| XGBoost | **0,7264** (0,0974; klaim 0,0975) | **0,1684** (0,1796; klaim 0,1348) | **2,60×** | **0,6411** | **0,0858** (2,63×) |
+| Random Forest | **0,7518** (0,1531; klaim 0,1524) | **0,1763** (0,2461; klaim 0,2259) | **2,39×** | **0,6575** (klaim 0,6577) | **0,0912** (2,80×; klaim 0,0913) |
+
+- XGBoost: median ROC/PR, pooled ROC/PR, dan gain reproduce persis (perbedaan hanya
+  pembulatan IQR ROC 0,0001).
+- Random Forest: median ROC/PR dan gain reproduce; pooled ROC berbeda 0,0002 dan
+  pooled PR 0,0001 — dalam toleransi RF yang sudah tercatat (C15).
+- **IQR PR tidak reproduce** untuk kedua model; lihat §17.4.
+
+### 17.4 Discrepancy — IQR PR
+
+Ringkasan yang diserahkan mencantumkan IQR PR XGB 0,1348 dan RF 0,2259. Perhitungan
+ulang dari 13 nilai PR per-fold menghasilkan **0,1796** (XGB) dan **0,2461** (RF).
+Semua metode kuantil yang diuji (linear, lower, higher, midpoint, nearest, serta
+median-split) menghasilkan nilai yang sama atau lebih jauh; tidak ada yang mendekati
+0,1348/0,2259. Median, pooled, dan gain cocok, sehingga discrepancy ini terbatas pada
+statistik IQR dan tidak memengaruhi klaim utama. Docs memakai nilai reproduced;
+nilai klaim dicantumkan sebagai pembanding (C20).
+
+### 17.5 Status and interpretation
+
+- **What is proven:** dataset Stage 9.3 memakai definisi fitur frozen Stage 3/8.2,
+  seluruh fitur struktural dan labelnya cocok dengan AFDB/UniProt, dan
+  median/pooled/gain LOGO-CV dapat direproduksi dari CSV.
+- **What is not proven:** generalisasi. Stage 9.3 memakai 14 protein yang sama dengan
+  Stage 9.2; realignment hanya mengubah dua definisi fitur, bukan menambah data atau
+  protein baru. Pooled ROC-AUC ≈0,64–0,66 bukan bukti prediksi fungsi pada protein
+  di luar dataset.
+- **Comparability:** definisi fitur sekarang sebanding dengan Stage 3/8.2, tetapi
+  komposisi protein dan ukuran dataset berbeda (14 protein / 3.960 residu vs 7 /
+  1.098). Metrik tidak boleh disatukan dengan tabel Stage 8.2 tanpa footnote.
+- **Bukan pengganti benchmark:** `stage7_processed_dataset.csv` dan
+  `BENCHMARK_DATASET_LOCK.md` tidak diubah. Stage 9.3 adalah artefak baru yang
+  dikunci byte-nya lewat SHA256, bukan benchmark resmi baru.
+
+### 17.6 Audit provenance
+
+Audit memakai script dan unduhan AFDB di direktori temporer di luar tracked tree;
+tidak ada yang di-commit. Bukti yang reproducible adalah SHA256 di atas, definisi
+frozen, dan tabel perbandingan di §17.2–§17.4.
+
+---
+
+## 18. Recommended Next Step — External Validation
+
+**Rekomendasi: validasi eksternal dan kalibrasi lintas-protein, bukan klaim
 generalisasi.**
 
 Fokus:
 
-1. **Putuskan status Stage 9.2.** Pilih salah satu: (a) kunci sebagai benchmark baru
-   dengan definisi fiturnya sendiri (dokumentasikan D9.2-1/D9.2-2), atau (b) bangun
-   ulang Stage 9.3 dengan definisi frozen Stage 3/8.2 (`pae_local_mean_k10` =
-   `|i-j| ≤ 10, j ≠ i`; H = `basic`).
-2. **Validasi eksternal** pada protein yang tidak dipakai memilih fitur; uji kalibrasi
+1. **Validasi eksternal** pada protein yang tidak dipakai memilih fitur; uji kalibrasi
    probabilitas lintas-protein.
-3. **Pertahankan Stage 8.2 tetap frozen.** Jangan mengubah
+2. **Pertahankan Stage 8.2 tetap frozen.** Jangan mengubah
    `stage7_processed_dataset.csv` atau `BENCHMARK_DATASET_LOCK.md`.
-4. **Pin dependensi ML** (`scikit-learn`, `xgboost`, `scipy`) di `requirements.txt`
+3. **Pin dependensi ML** (`scikit-learn`, `xgboost`, `scipy`) di `requirements.txt`
    hanya setelah persetujuan user.
-5. **Laporkan median + IQR dan pooled secara terpisah;** sediakan fold `unevaluable`
-   untuk protein tanpa positif (P01308 di Stage 9.2; GFP di Stage 8.2).
+4. **Laporkan median + IQR dan pooled secara terpisah;** sediakan fold `unevaluable`
+   untuk protein tanpa positif (P01308 di Stage 9.2/9.3; GFP di Stage 8.2). Untuk
+   Stage 9.3, gunakan nilai IQR reproduced, bukan nilai klaim.
+5. **Putuskan status benchmark Stage 9.3** (lock terpisah atau tetap sebagai artefak
+   ekspansi) sebelum memakai metriknya sebagai pembanding resmi.
 
-**Gate Stage 9:** jangan klaim generalisasi sebelum ada dataset baru yang terkunci,
-validasi eksternal, dan metrik yang direproduksi dari repo bersih.
+**Gate Stage 9:** jangan klaim generalisasi sebelum ada validasi eksternal dan metrik
+yang direproduksi dari repo bersih.
 
 ---
 
 ```
 NEXT GATE:
-STAGE 9.3 — FEATURE-DEFINITION RECONCILIATION + EXTERNAL VALIDATION
+STAGE 9.4 — EXTERNAL VALIDATION + CROSS-PROTEIN CALIBRATION
 ```
 
 ---
@@ -614,3 +735,4 @@ indikasi kerusakan data (semua checksum & test tetap konsisten).
 | D5 | **Wording label Stage 8.2 tidak presisi.** Ringkasan menyebut "Active/Binding/Metal Sites", sedangkan dataset terkunci hanya memakai **Active site + Binding site** (46 positif); metal binding tidak dimasukkan sebagai tipe terpisah. | `download/gemini-code-1792488146615.md` vs `BENCHMARK_DATASET_LOCK.md` §4 | Rendah — lock doc mengoreksi; semua laporan baru harus memakai definisi A+B |
 | D6 | **Ringkasan Stage 9 tidak konsisten dengan artefaknya.** Ringkasan menyebut 15 protein / 4.124 residu / 27 fitur (7 struktural + 20 one-hot), tetapi `download/production_dataset_100.csv` hanya berisi 6 kolom tanpa fitur struktural; beberapa nama protein juga salah (P00720 Endolysin disebut Endothiapepsin; P00644 Thermonuclease disebut RNase T1). | `download/gemini-code-1792488647858.md`, `download/production_dataset_100.csv` | Sedang — Stage 9 lama bukan benchmark resmi; **superseded oleh audit Stage 9.2 (§16)** |
 | D7 | **Ringkasan Stage 9.2 tidak konsisten dengan CSV-nya.** Markdown menyebut 123 positif, sedangkan CSV berisi 129; dua definisi fitur (`pae_local_mean_k10`, klasifikasi histidin) juga berbeda dari Stage 3/8.2. | `download/gemini-code-1792491213449.md` vs `results/dataset/stage9_processed_dataset.csv`; §16 | Sedang — metrik reproduce dari CSV, tetapi komparabilitas dengan Stage 8.2 terbatas |
+| D8 | **IQR PR Stage 9.3 tidak konsisten dengan data per-fold.** Ringkasan menyebut XGB 0,1348 dan RF 0,2259; perhitungan ulang semua metode kuantil menghasilkan 0,1796 dan 0,2461. Median/pooled/gain cocok. | `download/gemini-code-1792492604689.md` vs `results/dataset/stage93_realigned_dataset.csv`; §17.4 | Sedang — docs memakai nilai reproduced; nilai klaim dicatat sebagai pembanding |
