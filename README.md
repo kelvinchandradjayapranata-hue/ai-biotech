@@ -10,7 +10,7 @@
 
 <p align="center">
   <img alt="Python 3.12.10" src="https://img.shields.io/badge/Python-3.12.10-3776AB?logo=python&logoColor=white">
-  <img alt="Status: stages 1–6 complete, Stage 6 review pending" src="https://img.shields.io/badge/Status-Stages%201%E2%80%936%20complete%20%C2%B7%20Stage%206%20review%20pending-yellow">
+  <img alt="Status: Stages 1–8.2 complete, benchmark locked" src="https://img.shields.io/badge/Status-Stages%201%E2%80%938.2%20complete%20%C2%B7%20benchmark%20locked-brightgreen">
   <img alt="Data source: AlphaFold Database v6" src="https://img.shields.io/badge/Data-AlphaFold%20Database%20v6-blue">
 </p>
 
@@ -31,39 +31,40 @@ files** instead of trusting derived outputs, and every output is documented — 
 units, and exclusions included. The goal is a pipeline that is correct, reproducible, and honest
 about what it does and does not show.
 
-**Scope, stated plainly:** this is currently a *protein structure analysis and dataset engineering*
-project. It is **not** a finished drug-discovery system: there is no molecular docking, no molecular
-dynamics, no compound screening, and no wet-lab validation. **No ML model has been trained yet** —
-Stage 7 (simple ML experiments) intentionally comes only after the dataset review and a defined
-research question.
+**Scope, stated plainly:** this is currently a *protein structure analysis, dataset engineering,
+and benchmark-baseline* project. It is **not** a finished drug-discovery system: there is no
+molecular docking, no molecular dynamics, no compound screening, and no wet-lab validation. A
+reproducible ML baseline now exists (Stage 8.2, leave-one-protein-out cross-validation), but it is
+a **benchmark for comparison**, not evidence of biological generalization.
 
 ## Research Objectives
 
 The project investigates how protein structural information can be transformed into **reliable,
 machine-readable features** for future computational biology and AI research. The premise is
-deliberately bottom-up: before any model is trained, the data itself — its provenance, column
-definitions, units, and integrity — must be trustworthy.
+deliberately bottom-up: before any model is trained or any result is reported, the data itself —
+its provenance, column definitions, units, and integrity — must be trustworthy.
 
 **Established work.** Protein sequence and structure analysis of a reference protein,
 residue-level feature extraction with fully documented definitions and units, controlled
-construction of a 7-protein dataset from the AlphaFold Database, and integrity validation
+construction of a 7-protein dataset from the AlphaFold Database, integrity validation
 (checksums, sequence matching, and recomputation of derived values from the raw prediction
-files).
+files), plus a frozen Stage 7 benchmark and a reproduced Stage 8.2 leave-one-protein-out
+baseline.
 
-**Future goals.** Once the dataset review is complete and a measurable biological question is
-defined, the project aims to establish baselines, expand the dataset beyond the current
-validation set, design leakage-resistant evaluation (protein-level splits), and evaluate
-appropriate AI methods. No biological hypothesis, label, or trained model exists yet —
-intentionally, so that the question is defined before the modeling. See
-[Limitations and Future Work](#limitations-and-future-work).
+**Future goals.** The benchmark dataset and a baseline are now in place. The project aims to
+expand the dataset beyond the current validation set (15–100+ proteins), rebuild features from
+raw AlphaFold DB structures, add external validation, and test whether any signal generalizes
+beyond the seven current proteins. No broad biological hypothesis or generalizable predictive
+model exists yet. See [Limitations and Future Work](#limitations-and-future-work).
 
 ## Research FAQ
 
 **What is this project about?**
 An early-stage AI4Bio / computational biology research project. It builds and validates a data
 pipeline that turns protein sequences into AlphaFold-predicted structures and then into a
-machine-readable, residue-level feature dataset (currently 7 proteins, 1,098 residues × 29
-columns) — engineering groundwork for future AI-assisted biological research.
+machine-readable, residue-level feature dataset (currently 7 proteins, 1,098 residues). The
+project also maintains a frozen benchmark with a binary functional-site label and a reproducible
+leave-one-protein-out ML baseline (Stage 8.2).
 
 **What scientific problem does it aim to address?**
 How protein structural information — including the confidence measures that come with predicted
@@ -72,18 +73,22 @@ features suitable for AI research. The current work addresses *data quality and 
 a specific biological hypothesis is not yet part of the project.
 
 **What has been completed so far?**
-Stages 1–6: sequence analysis, structure analysis (ubiquitin reference), residue-level feature
+Stages 1–8.2: sequence analysis, structure analysis (ubiquitin reference), residue-level feature
 extraction (ubiquitin, 76 × 28), dataset planning (7 proteins, 6 functional categories), the
 controlled AlphaFold DB download and validation (14 v6 files, checksums and sequences verified),
-and the multi-protein dataset (1,098 residues × 29 columns). All four test suites pass — 72/72
-checks in total (20 + 12 + 16 + 24). Stage 6 is complete but still awaiting review; no machine
-learning has been done.
+and the multi-protein dataset (1,098 residues × 29 columns). All four extraction test suites pass
+— 72/72 checks (20 + 12 + 16 + 24). Stage 7 adds a frozen benchmark dataset (1,098 × 27) with
+UniProt Active site + Binding site labels (46 positives) and seven leave-one-protein-out folds.
+Stage 8.2 adds a reproducible XGBoost / Random Forest baseline; XGBoost matches the delivered
+summary exactly, and Random Forest agrees within a small tolerance. Details:
+[`docs/BENCHMARK_DATASET_LOCK.md`](docs/BENCHMARK_DATASET_LOCK.md).
 
 **Is this already an AI model for drug discovery?**
-No. There is no trained model, no molecular docking, no molecular dynamics, no compound
-screening, and no wet-lab validation. AlphaFold itself is a deep-learning system, and its
-predictions are the data this project works with — but the project's own outputs are validated
-datasets and analysis, not drug-discovery results.
+No. There is no generalizable trained model for function prediction, no molecular docking, no
+molecular dynamics, no compound screening, and no wet-lab validation. AlphaFold itself is a
+deep-learning system, and its predictions are the data this project works with — but the
+project's own outputs are validated datasets, a benchmark, and a weak baseline, not
+drug-discovery results.
 
 **Why might HPC or powerful GPUs be useful?**
 Not for the current pipeline — it is small and runs on a standard machine without a GPU. HPC or
@@ -94,10 +99,10 @@ compute does not by itself produce better science. See
 [Computing Resources and Research Support](#computing-resources-and-research-support).
 
 **What are the next research goals?**
-Complete the pending Stage 6 review; define a measurable biological question and a label from
-official annotations (e.g., UniProt GO terms or EC numbers — not yet decided); expand the
-dataset; establish baselines; and design leakage-resistant evaluation (protein-level splits)
-before selecting and training appropriate AI methods.
+Expand the dataset to 15–100+ proteins from raw AlphaFold DB structures; keep the same invariant
+feature definition and A+B label policy; run external validation on proteins not used for feature
+selection; test probability calibration across proteins; and only then evaluate whether a broader
+biological question (e.g., GO terms or EC numbers) is supportable.
 
 **Is the project open to academic collaboration?**
 Yes. The pipeline, dataset, schema, and test suites are public and reproducible, and the project
@@ -112,9 +117,10 @@ flowchart TD
     B --> C["Structure + confidence data<br/>mmCIF · PAE JSON · pLDDT · PAE · pTM"]
     C --> D["Validation<br/>checksums · sequence match · PAE shape — Stage 5"]
     D --> E["Feature extraction<br/>per-residue feature table — Stages 3 & 6"]
-    E --> F["Multi-protein dataset<br/>1,098 residues × 29 columns — Stage 6"]
-    F --> G{"Dataset review<br/>Stage 6 — pending"}
-    G -->|approved| H["Future ML experiments<br/>Stage 7 — not started"]
+    E --> F["Multi-protein feature table<br/>1,098 residues × 29 columns — Stage 6"]
+    F --> G["Benchmark dataset<br/>1,098 × 27 · A+B label · 7-fold LOGO — Stage 7"]
+    G --> H["LOGO-CV baseline<br/>XGBoost + Random Forest — Stage 8.2"]
+    H --> I["Dataset expansion + external validation<br/>Stage 9 — next"]
 ```
 
 Each arrow is a checkpoint, not just a hand-off: the structure data is validated against
@@ -133,8 +139,9 @@ Pipeline status across all stages — as of the latest verified runs:
 | 3 | Residue-level features — 76 residues × 28 columns | **20/20 tests PASS** |
 | 4 | Dataset manifest — 7 candidate proteins, 6 functional categories | **12/12 tests PASS** |
 | 5 | Controlled download + validation — 14 files (7 CIF + 7 PAE JSON, AFDB v6) | **16/16 tests PASS** |
-| 6 | Multi-protein dataset — 1,098 residues × 29 columns | **24/24 tests PASS** — review pending |
-| 7 | Machine-learning experiments | not started — awaiting Stage 6 review |
+| 6 | Multi-protein dataset — 1,098 residues × 29 columns | **24/24 tests PASS** |
+| 7 | Benchmark dataset — 1,098 × 27, A+B label, 7-fold LOGO | **LOCKED** — SHA256 + audit 7/7; see lock doc |
+| 8.2 | LOGO-CV baseline — XGBoost + Random Forest | **VERIFIED** — XGB exact; RF within tolerance |
 
 **The multi-protein dataset** (`results/dataset/multi_protein_residue_features.csv`) contains
 **1,098 residue rows × 29 columns**: 3 protein identifier columns (`protein_id`,
@@ -155,6 +162,12 @@ All 7 proteins passed per-protein validation. Summary values above are taken fro
 `results/dataset/multi_protein_summary.csv`; column definitions, units, and derivation rules are
 in [`multi_protein_structure_features.json`](results/dataset/multi_protein_structure_features.json).
 
+**The benchmark dataset** ([`results/dataset/stage7_processed_dataset.csv`](results/dataset/stage7_processed_dataset.csv))
+is frozen at **1,098 × 27**, with `target_y` (UniProt Active site + Binding site; 46 positives,
+4.19%) and seven leave-one-protein-out folds. It is byte-locked by SHA256; see
+[`docs/BENCHMARK_DATASET_LOCK.md`](docs/BENCHMARK_DATASET_LOCK.md) for the schema, fold map,
+freeze policy, and official Stage 8.2 metrics.
+
 **Verification suites** (all measured on freshly generated outputs; each script exits `0` only if
 every check passes):
 
@@ -165,8 +178,9 @@ every check passes):
 | `src/test_afdb_download.py` | Stage 5 — file integrity, checksums, metadata | 16/16 PASS |
 | `src/test_multi_protein_features.py` | Stage 6 — recomputation from raw files; reproducibility | 24/24 PASS |
 
-**Current status:** Stage 6 is complete but **awaiting review**; no trained ML model exists yet,
-and no biological conclusions are drawn from these predictions.
+**Current status:** Stages 1–8.2 are complete. A frozen benchmark and a reproducible ML baseline
+exist, but the baseline is weak and heterogeneous; no biological conclusions or generalization
+claims are drawn from it. The next gate is dataset expansion and external validation.
 
 ## Dataset Visualizations
 
@@ -207,11 +221,13 @@ ai-biotech/
 │   ├── extract_multi_protein_features.py    # Stage 6: multi-protein feature extraction
 │   └── test_*.py                            # integrity test suites (Stages 3–6)
 ├── results/
-│   ├── dataset/                             # Stage 4–6 outputs (CSV · JSON · PNG)
+│   ├── dataset/                             # Stage 4–7 outputs (CSV · JSON · PNG)
+│   │   └── stage7_processed_dataset.csv     # frozen benchmark (1,098 × 27, SHA256-locked)
 │   └── ...                                  # Stage 1–3 outputs (JSON · CSV · PNG)
 ├── docs/
 │   ├── DATASET_PLAN.md                      # dataset source plan & candidate selection
 │   ├── PROJECT_STATUS.md                    # single source of truth for project status
+│   ├── BENCHMARK_DATASET_LOCK.md            # benchmark contract & Stage 8.2 metrics
 │   ├── TAHAP_5_AFDB_DOWNLOAD_REPORT.md      # Stage 5 download & integrity report
 │   ├── TAHAP_6_MULTI_PROTEIN_FEATURE_REPORT.md  # Stage 6 extraction report & schema
 │   └── assets/banner.svg                    # README hero banner
@@ -315,20 +331,22 @@ in this repository should be read as experimentally validated structure or funct
 
 ## Limitations and Future Work
 
-### Completed (Stages 1–6)
+### Completed (Stages 1–8.2)
 
 Protein data retrieval (AlphaFold Server reference structure; 7 curated AlphaFold DB entries),
 structure validation (checksums, sequence matching, PAE shape), residue-level feature extraction
-(ubiquitin 76 × 28; multi-protein 1,098 × 29), dataset construction, and the integrity test
-suites (72 checks across Stages 3–6, all passing). Details and evidence in
-[Current Results](#current-results).
+(ubiquitin 76 × 28; multi-protein 1,098 × 29), the integrity test suites (72 checks across
+Stages 3–6), the frozen Stage 7 benchmark (1,098 × 27; A+B labels; 7-fold LOGO), and the
+reproduced Stage 8.2 baseline. Details and evidence in [Current Results](#current-results) and
+[`docs/BENCHMARK_DATASET_LOCK.md`](docs/BENCHMARK_DATASET_LOCK.md).
 
 ### Not yet completed
 
 None of the following exist yet, and none are claimed:
 
-- **Trained predictive models.** No training, no train/test split, no evaluation metrics —
-  Stage 7 has not started.
+- **Generalizable predictive models.** A baseline has been trained and evaluated (Stage 8.2), but
+  pooled ROC-AUC is close to random and there is no external validation. No model is claimed to
+  predict protein function in general.
 - **Molecular docking, molecular dynamics, compound screening.** No such analysis exists in this
   project.
 - **Experimental validation.** No wet-lab work, and the predictions have not been compared
@@ -345,18 +363,16 @@ None of the following exist yet, and none are claimed:
 
 ### Future direction
 
-1. **Complete the Stage 6 review** — dataset schema, per-protein statistics, documented
-   exclusions (still pending).
-2. **Verify feature consistency** — confirm that feature definitions and units match across the
-   Stage 3 and Stage 6 tables.
-3. **Define a measurable biological research question** — a target and hypothesis this data can
-   actually support, with labels drawn from official annotations (e.g., UniProt GO terms or EC
-   numbers; not yet decided).
-4. **Expand the dataset** beyond the current 7-protein validation set.
-5. **Design leakage-resistant evaluation** — for example, splitting at the protein level rather
-   than the residue level.
-6. **Establish baselines and select appropriate AI methods** — only once the question, labels,
-   and splits are fixed, with limitations reported honestly.
+1. **Expand the dataset** beyond the current 7-protein validation set (15–100+ proteins),
+   rebuilding features from raw AlphaFold DB structures.
+2. **Keep the benchmark frozen** — create a new dataset version and lock entry rather than
+   editing the current artifact.
+3. **Run external validation** on proteins not used for feature selection, and report probability
+   calibration across proteins.
+4. **Pin ML dependencies** (`scikit-learn`, `xgboost`, `scipy`) before running experiments from a
+   clean checkout.
+5. **Evaluate broader label policies** (GO terms, EC numbers) only after the expanded dataset
+   exists; the current A+B benchmark must remain comparable.
 
 ## Computing Resources and Research Support
 
@@ -400,14 +416,15 @@ a technical guide to Biopython's role in modern bioinformatics and AI4Bio.
 | Document | Contents |
 |---|---|
 | [`docs/PROJECT_STATUS.md`](docs/PROJECT_STATUS.md) | Single source of truth for project status |
+| [`docs/BENCHMARK_DATASET_LOCK.md`](docs/BENCHMARK_DATASET_LOCK.md) | Frozen benchmark contract, label policy, fold map, and Stage 8.2 metrics |
 | [`docs/DATASET_PLAN.md`](docs/DATASET_PLAN.md) | Dataset source plan and candidate selection |
 | [`docs/TAHAP_5_AFDB_DOWNLOAD_REPORT.md`](docs/TAHAP_5_AFDB_DOWNLOAD_REPORT.md) | Stage 5 download and integrity report |
 | [`docs/TAHAP_6_MULTI_PROTEIN_FEATURE_REPORT.md`](docs/TAHAP_6_MULTI_PROTEIN_FEATURE_REPORT.md) | Stage 6 extraction report and schema |
 | [`results/dataset/multi_protein_structure_features.json`](results/dataset/multi_protein_structure_features.json) | Machine-readable schema: column definitions, units, exclusions |
 | [`notebooks/01_first_protein_analysis.ipynb`](notebooks/01_first_protein_analysis.ipynb) | Concept notebook: amino acids, sequences, structures, pLDDT / PAE / pTM |
 
-*Stage reports are written in Indonesian (the project's working language); this README is the
-English entry point.*
+*Most stage reports are written in Indonesian (the project's working language); the README and
+the benchmark lock document are in English.*
 
 **Data source.** All structure predictions come from the
 [AlphaFold Protein Structure Database](https://alphafold.ebi.ac.uk/) (v6 models), developed by

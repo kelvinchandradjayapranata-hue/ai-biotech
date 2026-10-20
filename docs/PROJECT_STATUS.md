@@ -9,10 +9,18 @@ diubah, tidak ada eksperimen baru dijalankan, tidak ada unduhan dilakukan.
 
 ```
 PROJECT STATUS:
-STAGE 1–6 COMPLETE
+STAGE 1–8.2 COMPLETE — BENCHMARK LOCKED
 DATA PIPELINE: VALIDATED
-BIOLOGICAL ML: NOT YET STARTED
+BIOLOGICAL ML: BASELINE REPRODUCED — NO GENERALIZATION CLAIM
 ```
+
+> **Update 2026-10-20.** Stage 7 (dataset & label) dan Stage 8.2 (LOGO-CV baseline)
+> sudah selesai. Dataset benchmark dikunci di
+> `results/dataset/stage7_processed_dataset.csv` (SHA256
+> `34f9dd27b1d11fb35155f1542e066a50110144cd84c62d91a28caa6ab9d99f61`), dan metrik
+> resmi Stage 8.2 telah direproduksi serta dicatat di
+> `docs/BENCHMARK_DATASET_LOCK.md`. Bagian 1, 2, 9, 10, 11, 12, 13, 15, dan 16 di
+> bawah sudah diperbarui; bagian 3–8 tetap merupakan catatan historis Stage 1–6.
 
 ---
 
@@ -31,19 +39,30 @@ Yang **sudah tercapai** dan terverifikasi:
   (3 identifier protein + 26 fitur numerik) dari 7 protein, dengan 24/24 test PASS.
 - Seluruh test Stage 3 (20/20), Stage 4 (12/12), Stage 5 (16/16) tetap lulus.
 - Semua output dataset deterministik dan **byte-identical** antar-run (hash tercatat).
+- **Stage 7:** dataset benchmark **1098 × 27** dengan label biner **Active site +
+  Binding site** (46 positif, 4,19%) dan 7 fold leave-one-protein-out; dikunci dengan
+  SHA256 dan diaudit 7/7 terhadap UniProt serta 25 kolom bersama Stage 6.
+- **Stage 8.2:** baseline LOGO-CV (7 fitur struktural invarian + 6 one-hot AA)
+  direproduksi. XGBoost cocok persis dengan ringkasan Stage 8.2 di semua nilai
+  per-fold, median, dan pooled; Random Forest cocok dalam toleransi kecil. Median/IQR
+  resmi tercatat di `docs/BENCHMARK_DATASET_LOCK.md`.
 
 Yang **BELUM tercapai** (dan tidak diklaim):
 
-- **Belum ada machine learning sama sekali.** Tidak ada training, validasi model,
-  klasifikasi, regresi, embedding, atau clustering.
-- **Belum ada label biologis (y) yang dipilih.**
-- **Belum ada bukti predictive power** dari fitur yang diekstrak.
-- **1098 residu / 7 protein bukan dataset ML yang memadai** — terlalu kecil, terlalu
-  homogen (5/7 protein manusia, semua globular/larut, semua monomer).
+- **Belum ada bukti predictive power yang umum.** Baseline Stage 8.2 lemah dan sangat
+  heterogen antar-protein: pooled ROC-AUC 0,5368 (XGB) / 0,5062 (RF), sedangkan pooled
+  PR-AUC 0,0916 / 0,1028 terhadap baseline prevalensi 0,0419. Pooled mendekati acak;
+  median per-fold yang lebih tinggi tidak boleh dibaca sebagai kemampuan generalisasi.
+- **Skala belum memadai** — 7 protein, 1098 residu berkorelasi, 46 positif. Ini bukan
+  1098 sampel independen, dan 5/7 protein manusia serta semuanya globular/larut/monomer.
+- **Belum ada validasi eksternal** pada protein baru, struktur eksperimen, atau dataset
+  independen. Belum ada uji kalibrasi probabilitas lintas-protein.
+- **Label masih terbatas pada A+B.** Belum ada label multi-kelas, GO terms, EC numbers,
+  atau skema label alternatif.
 
-Posisi jujur: **infrastruktur data selesai dan tervalidasi; pertanyaan biologis dan
-ML belum dimulai.** Stage 6 masih menunggu review user; sesuai stop condition Stage 6,
-tidak ada langkah lanjutan yang dijalankan tanpa review.
+Posisi jujur: **infrastruktur data selesai dan tervalidasi; benchmark ML baseline sudah
+ada dan terverifikasi, tetapi belum ada bukti generalisasi biologis.** Fokus berikutnya
+adalah memperbesar dataset dan validasi eksternal, bukan mengklaim performa.
 
 ---
 
@@ -56,11 +75,12 @@ tidak ada langkah lanjutan yang dijalankan tanpa review.
 | Validasi integritas data | **BERHASIL** | SHA256 dihitung ulang & cocok; sekuens 7/7 MATCH |
 | Feature extraction | **BERHASIL** | 1098 × 29 kolom, 24/24 test PASS |
 | Reproducibility | **BERHASIL** | Output dataset byte-identical antar-run |
-| Predictive biological AI / ML | **BELUM DIMULAI** | Tidak ada script ML di `src/`, tidak ada model |
-| Label biologis (y) | **BELUM ADA** | Baru usulan arah di DATASET_PLAN.md §9; belum diputuskan |
-| Klaim ilmiah/biologis | **TIDAK ADA (sengaja)** | Semua laporan menyatakan fitur = prediksi model |
+| Predictive biological AI / ML | **BASELINE ADA; GENERALISASI BELUM** | Stage 8.2 LOGO-CV direproduksi; pooled ROC 0,5368/0,5062; median/IQR di `BENCHMARK_DATASET_LOCK.md` |
+| Label biologis (y) | **ADA — A+B** | `target_y` = UniProt Active site + Binding site; 46 positif; audit 7/7 protein |
+| Klaim ilmiah/biologis | **TIDAK ADA (sengaja)** | Semua laporan menyatakan fitur = prediksi model; baseline bukan klaim fungsi |
 
-Ringkas: **A/B/C tercapai; D/E/F/G belum dan diakui eksplisit** (lihat bagian 12).
+Ringkas: **A/B/C tercapai; D ada sebagai baseline terverifikasi tetapi belum
+menunjukkan generalisasi; E/F/G tetap belum dan diakui eksplisit** (lihat bagian 12).
 
 ---
 
@@ -151,7 +171,7 @@ Ringkas: **A/B/C tercapai; D/E/F/G belum dan diakui eksplisit** (lihat bagian 12
 
 ## 8. Stage 6 — Multi-Protein Feature Extraction
 
-**Status: PASS WITH CONCERNS** (COMPLETE + 24/24 test PASS; menunggu review user)
+**Status: PASS WITH CONCERNS** (COMPLETE + 24/24 test PASS; concern C1/C2 ditutup untuk benchmark Stage 7, C3 tetap)
 
 | Aspek | Isi |
 |---|---|
@@ -176,10 +196,14 @@ Ringkas: **A/B/C tercapai; D/E/F/G belum dan diakui eksplisit** (lihat bagian 12
 | 4 — Dataset planning | PASS (APPROVED) | 7 kandidat, 6 kategori fungsi, 3 organisme, 105–238 aa; 12/12 test | `results/dataset/dataset_manifest.csv`, `docs/DATASET_PLAN.md` | Rencana dataset terverifikasi dari sumber resmi; lisensi CC BY 4.0 |
 | 5 — AFDB download & validation | PASS | 14/14 file v6 tervalidasi, 1.469.156 bytes, 0 gagal; 16/16 test | `data/alphafold_db/raw/`, `download_checksums.csv`, `results/dataset/*_validation.csv` | Struktur AlphaFold resmi diperoleh & **integritasnya terbukti** (checksum + sekuens) |
 | 6 — Multi-protein features | PASS WITH CONCERNS | 1098 residu × 29 kolom (26 fitur); 7/7 protein PASS; 24/24 test | `results/dataset/multi_protein_*.csv|json|png` | Pipeline terbukti **portabel**; dataset fitur siap-analisis, **belum ada nilai prediktif yang diuji** |
+| 7 — Dataset & label | PASS (LOCKED 2026-10-20) | 1098 × 27; label A+B; 46 positif (4,19%); 7-fold LOGO; SHA256 `34f9dd…f61` | `results/dataset/stage7_processed_dataset.csv`, `docs/BENCHMARK_DATASET_LOCK.md` | Benchmark resmi terkunci; 25 kolom identik Stage 6; label audit 7/7 |
+| 8.2 — LOGO-CV baseline | PASS (VERIFIED) | 13 fitur; XGB median ROC 0,7185 / PR 0,2144; RF 0,6608 / 0,2647; pooled XGB 0,5368 / 0,0916, RF 0,5062 / 0,1028 | `docs/BENCHMARK_DATASET_LOCK.md` §7 | Baseline reproducible; XGB cocok persis dengan ringkasan Stage 8.2; **bukan bukti generalisasi** |
 
 **Batas tegas antar baris:** sampai Stage 6, semua capaian bersifat
-**engineering + integritas data + ekstraksi fitur**. Tidak ada satu pun baris di tabel
-ini yang merupakan hasil ML atau klaim biologis.
+**engineering + integritas data + ekstraksi fitur**. Stage 7 menambahkan **benchmark
+terkunci** (dataset + label), dan Stage 8.2 menambahkan **baseline ML yang
+direproduksi**. Tidak ada satu pun baris di tabel ini yang merupakan klaim biologis
+atau bukti generalisasi.
 
 ---
 
@@ -203,6 +227,8 @@ ini yang merupakan hasil ML atau klaim biologis.
 | `results/` | `ubiquitin_residue_features.csv` (76 × 28), `ubiquitin_structure_features.json`, `ubiquitin_plddt_per_residue.png`, `ubiquitin_pae_heatmap.png` | 10.622 B / 7.780 B / 51.470 B / 62.653 B |
 | `results/dataset/` | `dataset_manifest.csv` (7), `structure_validation.csv` (7), `pae_validation.csv` (7), `dataset_download_manifest.csv` (7) | 4.364 / 512 / 944 / 2.193 B |
 | `results/dataset/` | `multi_protein_residue_features.csv` (**1098 × 29**), `multi_protein_summary.csv` (7), `multi_protein_structure_features.json`, `multi_protein_plddt_overview.png`, `multi_protein_pae_overview.png` | 169.141 B / 742 B / 25.597 B / 136.884 B / 926.520 B |
+| `results/dataset/` | **`stage7_processed_dataset.csv`** — benchmark terkunci (**1098 × 27**, 46 positif), SHA256 `34f9dd27…d99f61` | 149.609 B |
+| `docs/` | **`BENCHMARK_DATASET_LOCK.md`** — kontrak benchmark: skema, label A+B, fold map, protokol & metrik Stage 8.2, kebijakan freeze | — |
 | `results/` | `01_first_protein_analysis.executed.ipynb`, `notebook_plot_1.png` | output notebook |
 | `notebooks/` | `01_first_protein_analysis.ipynb` | materi pembelajaran |
 
@@ -221,9 +247,13 @@ ini yang merupakan hasil ML atau klaim biologis.
 | `src/extract_multi_protein_features.py` | Ekstraksi fitur multi-protein (Stage 6) |
 | `src/test_multi_protein_features.py` | Test Stage 6 — 24 check |
 
-**Tidak ada script ML di `src/`.** Tidak ada PyTorch/TensorFlow/CUDA.
+**Tidak ada script ML di `src/`.** Baseline Stage 8.2 dijalankan dengan harness
+verifikasi eksternal (temporary, di luar repo); belum ada training script yang
+di-commit. Tidak ada PyTorch/TensorFlow/CUDA.
 Environment: `.venv` Python **3.12.10**; `requirements.txt` hanya biopython, pandas,
-numpy, matplotlib, ipykernel, nbclient.
+numpy, matplotlib, ipykernel, nbclient. Verifikasi Stage 8.2 memakai scikit-learn
+1.9.1, xgboost 3.4.1, scipy 1.18.1, dan numpy 2.5.4 yang dipasang sementara di luar
+`.venv` — **belum** dipin di `requirements.txt` (lihat `BENCHMARK_DATASET_LOCK.md` §8).
 
 ### 10.4 SHA256 terverifikasi (top-level)
 
@@ -231,6 +261,9 @@ Dihitung ulang **read-only** saat dokumen ini dibuat dan **cocok persis** dengan
 yang tercatat di report/manifest:
 
 ```
+# Benchmark Stage 7 (dihitung ulang 2026-10-20; sumber: download/)
+34f9dd27b1d11fb35155f1542e066a50110144cd84c62d91a28caa6ab9d99f61  results/dataset/stage7_processed_dataset.csv
+
 # Output Stage 6 (cocok dengan docs/TAHAP_6_MULTI_PROTEIN_FEATURE_REPORT.md §6)
 390462a42d8befe5588b1019d51b4c4282433b0f712c4377e5191883983d3c1d  multi_protein_residue_features.csv
 111a9569ebf8990eeca19673215f1415e828cc00fd2f6c20a16e9048252660e1  multi_protein_summary.csv
@@ -266,6 +299,11 @@ Klaim yang **didukung bukti** di project ini:
 5. **Homogenitas confidence dalam set ini.** Semua 7 protein berprediksi
    high-confidence pada mayoritas residu (mean pLDDT 85,2–97,9). Nilai terendah ada
    pada P0DP23 (calmodulin, mean 85,241; min 41,81).
+6. **Benchmark ML baseline sudah dikunci dan reproducible.** Stage 8.2 LOGO-CV pada
+   dataset Stage 7 mereproduksi XGBoost persis dan Random Forest dalam toleransi kecil;
+   median, IQR, dan pooled tercatat di `BENCHMARK_DATASET_LOCK.md`. Namun pooled ROC
+   mendekati acak dan variasi antar-fold besar — ini **baseline pembanding**, bukan
+   bukti predictive power biologis.
 
 **Tidak ada** kesimpulan biologis atau fungsional yang ditarik dari data ini, dan itu
 memang keputusan desain project — lihat bagian 12.
@@ -290,14 +328,19 @@ struktur 3D di dalam sel.
 1098 × 29 kolom dihasilkan dengan 24/24 test PASS dan rekalkulasi independen
 terhadap matriks PAE mentah.
 
-**D. Predictive biological AI BELUM diuji — TIDAK ADA BUKTI.**
-Tidak ada model, tidak ada training, tidak ada split train/test, tidak ada metrik
-evaluasi. Tidak ada satu pun artefak di `src/` atau `results/` yang merupakan output ML.
+**D. Predictive biological AI sudah diuji sebagai baseline, tetapi belum terbukti
+bergeneralisasi.**
+Stage 8.2 LOGO-CV sudah dijalankan dan direproduksi (median/IQR dan pooled di
+`BENCHMARK_DATASET_LOCK.md`). Namun pooled ROC-AUC mendekati acak (0,5368 XGB / 0,5062
+RF), variasi antar-fold sangat besar, dan tidak ada validasi eksternal. Yang terbukti
+adalah **reproducibility protokol dan angka baseline**, bukan predictive power biologis.
 
-**E. Tidak ada klaim bahwa fitur saat ini sudah punya predictive power — TIDAK DIKLAIM.**
+**E. Tidak ada klaim bahwa fitur saat ini sudah punya predictive power biologis —
+TIDAK DIKLAIM.**
 Fitur yang ada adalah deskriptor struktural/geomik turunan prediksi (identitas residu,
-hidropati, muatan, koordinat, pLDDT, ringkasan PAE). Belum ada uji terarah apakah
-fitur-fitur ini dapat memprediksi apa pun. Korelasi/label belum pernah diuji.
+hidropati, muatan, koordinat, pLDDT, ringkasan PAE). Uji baseline Stage 8.2 menunjukkan
+sinyal lemah dan heterogen; hasil itu tidak boleh dibaca sebagai kemampuan model
+memprediksi fungsi protein pada umumnya. Tidak ada klaim generalisasi.
 
 **F. 7 protein / 1.098 residu belum merupakan dataset ML yang memadai — DIAKUI.**
 Alasannya: (1) hanya 7 sampel protein — jauh di bawah kebutuhan klaim statistik apa pun;
@@ -306,20 +349,22 @@ protein membran atau daerah tak terstruktur besar; (4) semua monomer, padahal se
 protein in vivo berinteraksi (mis. SOD1); (5) 1098 baris residu **bukan 1098 sampel
 independen** — residu dalam satu protein sangat berkorelasi (struktur, sekuens, dan
 confidence-nya saling bergantung). Menghitung "N = 1098" sebagai ukuran sampel
-statistik adalah keliru.
+statistik adalah keliru. Status 2026-10-20: benchmark sudah dikunci, tetapi
+keterbatasan ini tetap; 46 positif pada 7 protein tidak cukup untuk klaim generalisasi.
 
-**G. Stage 7 berikutnya adalah menentukan biological question dan independent label y —
-BELUM DIMULAI.**
-`DATASET_PLAN.md` §9 baru mencantumkan *usulan arah* (kategori fungsi dari manifest
-sebagai ilustrasi; opsi GO terms / EC numbers di masa depan) — **belum diputuskan**,
-dan 7 sampel dinilai sendiri oleh dokumen itu sebagai terlalu sedikit untuk klasifikasi.
+**G. Stage 7 (label A+B) SELESAI; ekspansi dan pertanyaan biologis lanjutan BELUM.**
+Stage 7 menetapkan label biner **Active site + Binding site** dan fold LOGO, lalu
+Stage 8.2 menetapkan baseline. Pertanyaan yang lebih luas (GO terms, EC numbers,
+multi-label) dan ekspansi 15–100+ protein **belum** dikerjakan; 7 sampel tetap terlalu
+sedikit untuk klasifikasi umum. `DATASET_PLAN.md` §9 masih berupa usulan arah.
 
 Tambahan yang juga **belum** terbukti/dilakukan:
 - Tidak ada validasi terhadap struktur eksperimen (PDB) — tidak ada RMSD, tidak ada
   perbandingan dengan kristalografi/NMR/cryo-EM.
 - Tidak ada klaim bahwa pLDDT/PAE tinggi berarti struktur benar di dalam sel.
 - Tidak ada docking, molecular dynamics, skrining senyawa, atau eksperimen basah.
-- Tidak ada model prediksi fungsi, tidak ada "penemuan".
+- Tidak ada model prediksi fungsi yang tervalidasi/generalisasi; baseline Stage 8.2 bukan
+  "penemuan".
 
 ---
 
@@ -329,11 +374,11 @@ Diurutkan dari yang paling berdampak pada tahap berikutnya.
 
 | # | Concern | Tingkat | Sumber | Status penanganan |
 |---|---|---|---|---|
-| C1 | **Skema Stage 6 = 26 fitur, bukan 28.** `contact_prob_sum` & `n_high_conf_contacts` dikeluarkan karena `contact_probs` tidak tersedia di AFDB | Tinggi (mempengaruhi desain fitur ML) | Stage 6 report §5, §10.1 | Didokumentasikan eksplisit di JSON (`schema.excluded_features`); **tidak** diimputasi/proksi/didefinisikan ulang. Keputusan perlakuan = user |
-| C2 | **Redundansi pLDDT AFDB.** CIF AFDB menulis pLDDT per-residu ke semua atom → di 1098 baris: `plddt_atom_std = 0`, `plddt_atom_mean = min = max = plddt_ca`. 4 kolom `plddt_atom_*` redundan dengan `plddt_ca` | Tinggi (risiko multikolinearitas sempurna bila dipakai ML apa adanya) | Stage 6 report §10.2 | Dikunci test E5 dan didokumentasikan di JSON; **tidak** diperbaiki diam-diam. Keputusan = user |
-| C3 | **Skala dataset tidak memadai untuk ML.** 7 protein / 1098 residu berkorelasi | Tinggi | Stage 4 plan §6, Stage 6 report | Diakui eksplisit (butir F) |
-| C4 | **Belum ada label (y).** Tidak ada target prediksi yang dipilih | Tinggi (blocker untuk ML) | `DATASET_PLAN.md` §9 | Baru usulan arah; belum diputuskan |
-| C5 | **Koordinat mentah tidak invariant rotasi/translasi** (`ca_x/y/z`, `centroid_*`) | Sedang | Stage 3 JSON, `DATASET_PLAN.md` §8 | Sudah dicatat sebagai catatan penting untuk ML; alternatif fitur jarak/turunan belum dibuat |
+| C1 | **Skema Stage 6 = 26 fitur, bukan 28.** `contact_prob_sum` & `n_high_conf_contacts` dikeluarkan karena `contact_probs` tidak tersedia di AFDB | Tinggi (mempengaruhi desain fitur ML) | Stage 6 report §5, §10.1 | **SELESAI untuk benchmark:** Stage 7 menetapkan 27 kolom (25 shared + label + fold); Stage 8.2 memakai 13 fitur. Eksperimen fitur lain tetap terbuka |
+| C2 | **Redundansi pLDDT AFDB.** CIF AFDB menulis pLDDT per-residu ke semua atom → di 1098 baris: `plddt_atom_std = 0`, `plddt_atom_mean = min = max = plddt_ca`. 4 kolom `plddt_atom_*` redundan dengan `plddt_ca` | Tinggi (risiko multikolinearitas sempurna bila dipakai ML apa adanya) | Stage 6 report §10.2 | **SELESAI:** 4 kolom `plddt_atom_*` dibuang dari dataset benchmark dan tidak dipakai Stage 8.2 |
+| C3 | **Skala dataset tidak memadai untuk ML.** 7 protein / 1098 residu berkorelasi | Tinggi | Stage 4 plan §6, Stage 6 report | **TETAP:** diakui eksplisit (butir F); benchmark dikunci tetapi belum generalisasi |
+| C4 | **Belum ada label (y).** Tidak ada target prediksi yang dipilih | Tinggi (blocker untuk ML) | `DATASET_PLAN.md` §9 | **SELESAI:** label A+B (Active site + Binding site), 46 positif, audit 7/7 protein |
+| C5 | **Koordinat mentah tidak invariant rotasi/translasi** (`ca_x/y/z`, `centroid_*`) | Sedang | Stage 3 JSON, `DATASET_PLAN.md` §8 | **DIHINDARI di benchmark:** koordinat tidak dipakai Stage 8.2; tetap ada di CSV beku sebagai dokumentasi |
 | C6 | **Versi AFDB v6 dapat berubah** di masa depan | Sedang (eksternal) | Stage 5 report §14.2 | SHA256 tercatat sebagai titik referensi; perubahan server akan terdeteksi sebagai hash berbeda |
 | C7 | **Dua sistem checksum berbeda** (AFDB = MD5 32 hex; UniProt = CRC64 16 hex) | Rendah (risiko salah baca manual) | Stage 5 report §11, §14.1 | Keduanya diverifikasi cocok; terdokumentasi |
 | C8 | **PAE asimetris** (maks \|PAE − PAEᵀ\| = 19–24 Å di 7/7 protein) | Rendah (wajar matematis) | Stage 6 report §10.3 | Arah matriks dipertahankan; test check 10 memverifikasi tidak ada transpose tak sengaja |
@@ -341,12 +386,15 @@ Diurutkan dari yang paling berdampak pada tahap berikutnya.
 | C10 | **Semua fitur = prediksi model**, bukan pengukuran eksperimen | Fundamental (melekat) | Semua report | Dinyatakan berulang di README, JSON, dan kedua report |
 | C11 | **RNase1 memakai prekursor 1–150** (termasuk signal peptide), bukan RNase A mature 124 residu | Rendah | `dataset_manifest.csv` notes, Stage 5 report §14.4 | Tercatat di manifest |
 | C12 | **Ligand/ion/kovalen tidak dimodelkan** (heme pada myoglobin & cytochrome c; Cu/Zn pada SOD1; kromofor GFP terbentuk post-translasi) | Sedang (interpretasi) | `dataset_manifest.csv` notes, `DATASET_PLAN.md` §6 | Tercatat per baris di manifest |
+| C13 | **Provenance gap Stage 7.** Script pembuat `stage7_processed_dataset.csv` tidak ada di `src/`; file datang sebagai artefak dan diaudit ulang terhadap Stage 6 + UniProt | Sedang | `BENCHMARK_DATASET_LOCK.md` §2 | Tercatat; rebuild from source belum one-command |
+| C14 | **Dependensi ML belum dipin.** scikit-learn, xgboost, scipy, dan numpy verifikasi dipasang sementara di luar `.venv`; tidak ada di `requirements.txt` | Sedang (reproducibility) | `BENCHMARK_DATASET_LOCK.md` §8 | Tercatat; keputusan pin dependency = user |
+| C15 | **Toleransi reproduksi RF.** XGB cocok persis; RF median berbeda ≤0,0011 dan pooled ≤0,0085, konsisten dengan perbedaan versi/implementasi scikit-learn | Rendah | `BENCHMARK_DATASET_LOCK.md` §7.4 | Tercatat; nilai resmi dan perbandingan didokumentasikan |
 
 ---
 
 ## 14. Current Reproducibility Status
 
-**Status: KUAT untuk data & fitur; BELUM TERUJI untuk ML (belum ada ML).**
+**Status: KUAT untuk data & fitur; BASELINE ML TERVERIFIKASI DENGAN CATATAN.**
 
 | Aspek | Status | Bukti |
 |---|---|---|
@@ -355,8 +403,8 @@ Diurutkan dari yang paling berdampak pada tahap berikutnya.
 | Integritas input dikunci | **Ya** | Extractor memverifikasi SHA256 tiap file mentah terhadap manifest sebelum diproses; test memverifikasi ulang (E3/E4) |
 | Checksum dapat diverifikasi ulang oleh siapa pun | **Ya** | `download_checksums.csv` + test Stage 5 menghitung ulang dari disk |
 | Test suite saling menjaga | **Ya** | Test Stage 6 (check 18 & 19) menjalankan ulang test Stage 3 & Stage 5; keduanya tetap lulus |
-| **Verifikasi dalam dokumen ini** | **Parsial** | Hash top-level (bagian 10.4) **dihitung ulang read-only dan cocok persis**. **Test suite TIDAK dijalankan ulang** saat dokumen ini dibuat, sesuai aturan "jangan menjalankan eksperimen baru" — status PASS yang dilaporkan berasal dari report tertulis |
-| Reproducibility ML | **Tidak berlaku** | Belum ada model, split, atau metrik |
+| **Verifikasi dalam dokumen ini** | **Parsial** | Hash top-level (bagian 10.4) **dihitung ulang read-only dan cocok persis**. Test suite pipeline data tidak dijalankan ulang; satu-satunya eksperimen baru adalah verifikasi Stage 8.2 (lihat `BENCHMARK_DATASET_LOCK.md` §7) |
+| Reproducibility ML | **Sebagian** | Stage 8.2: XGB cocok persis dengan ringkasan, RF dalam toleransi; harness verifikasi di luar repo dan dependensi belum dipin (`BENCHMARK_DATASET_LOCK.md` §8) |
 
 Catatan: satu-satunya artefak non-deterministik yang diketahui adalah
 `data/alphafold_db/metadata/download_log.txt` (timestamp + path absolut lokal) — file
@@ -366,51 +414,45 @@ log, bukan output dataset, dan tidak dipakai sebagai input analisis.
 
 ## 15. Current Project Position
 
-**Posisi: akhir Stage 6 — BERHENTI menunggu review user.**
+**Posisi: Stage 8.2 selesai — benchmark terkunci; menunggu keputusan ekspansi.**
 
-- Stage 1–6 selesai secara teknis. **Stage 6 secara eksplisit masih "menunggu review"**
-  (dinyatakan di README dan di report Stage 6 §11).
-- Stop condition Stage 6 yang berlaku: **tidak lanjut ke ML, tidak memperbesar dataset,
-  tidak mencari label biologis baru, tidak membuat model.**
-- Dataset AFDB **frozen**: raw CIF/PAE, checksum, dan `dataset_download_manifest.csv`
-  tidak diubah oleh Stage 6.
-- Belum ada pertanyaan biologis yang dirumuskan, belum ada label, belum ada model.
-- Gate berikutnya bersifat **desain ilmiah**, bukan pekerjaan engineering lanjutan:
-  definisi pertanyaan + target sebelum menyentuh ML.
+- Stage 1–6 selesai dan terdokumentasi; concern C1, C2, C4, dan C5 sudah ditutup
+  untuk benchmark (C3 tetap).
+- Stage 7 selesai: dataset 1098 × 27, label A+B, 7-fold LOGO, dikunci dengan SHA256.
+- Stage 8.2 selesai dan direproduksi: XGB cocok persis, RF dalam toleransi kecil;
+  median/IQR + pooled tercatat di `docs/BENCHMARK_DATASET_LOCK.md`.
+- Dataset AFDB dan dataset Stage 7 **frozen**; tidak ada perubahan in-place.
+- Belum ada bukti generalisasi; 7 protein / 46 positif tetap terlalu kecil.
+- Gate berikutnya: keputusan user tentang ekspansi dataset (15–100+ protein) dan
+  validasi eksternal, bukan perubahan benchmark ini.
 
 ---
 
-## 16. Recommended Next Step — Stage 7
+## 16. Recommended Next Step — Stage 9
 
-**Stage 7 yang direkomendasikan: DATASET & LABEL DESIGN (bukan training).**
+**Stage 9 yang direkomendasikan: DATASET EXPANSION & EXTERNAL VALIDATION.**
 
-Fokus Stage 7 adalah **menentukan pertanyaan biologis dan label independen (y)** sebelum
-satu baris pun kode ML ditulis. Usulan cakupan:
+Fokus:
 
-1. **Tetapkan pertanyaan biologis eksplisit** — apa yang ingin diprediksi, pada level
-   apa (per-protein atau per-residu), dan mengapa itu menarik.
-2. **Pilih dan definisikan label y dari sumber resmi** (mis. anotasi UniProtKB: GO terms
-   atau EC numbers), termasuk keputusan desain: multi-label vs single-label, hierarki,
-   keseimbangan kelas, dan status lisensi. Catatan: `DATASET_PLAN.md` §9 sudah menandai
-   `category` (6 kategori) sebagai kandidat **ilustrasi saja** — 7 sampel terlalu sedikit
-   untuk klasifikasi.
-3. **Selesaikan kebijakan fitur** atas concern C1 dan C2: apakah kolom `plddt_atom_*`
-   yang redundan dibuang/dikonsolidasi, dan bagaimana posisi resmi soal 26 vs 28 fitur
-   dicatat sebagai keputusan (bukan perubahan diam-diam).
-4. **Tentukan strategi independensi data** — jika tetap per-residu, jelaskan dan
-   tangani korelasi antar-residu dalam satu protein (butir F); pertimbangkan split
-   per-protein, bukan per-residu.
-5. **Tentukan skala dataset minimum** untuk membuat klaim apa pun, dan putuskan apakah
-   perlu memperbesar dataset AFDB (keputusan user — Stage 6 melarangnya tanpa review).
+1. **Bangun ulang pipeline Stage 7 dari sumber mentah** (AlphaFold DB mmCIF/PDB) untuk
+   15–100+ protein; jangan mengubah `stage7_processed_dataset.csv`.
+2. **Pertahankan fitur invarian dan kebijakan label A+B** yang sama; dokumentasikan
+   setiap perbedaan sebagai benchmark baru.
+3. **Gunakan LOGO-CV**; laporkan median + IQR dan pooled secara terpisah; sediakan fold
+   `unevaluable` untuk protein tanpa positif (seperti GFP).
+4. **Validasi eksternal** pada protein yang tidak dipakai memilih fitur; uji kalibrasi
+   probabilitas lintas-protein.
+5. **Pin dependensi ML** (`scikit-learn`, `xgboost`, `scipy`) di `requirements.txt` bila
+   eksperimen akan dijalankan dari repo bersih.
 
-**Gate Stage 7:** jangan mulai training/model sebelum (a) review Stage 6 selesai,
-(b) pertanyaan biologis tertulis, dan (c) definisi label y final beserta sumbernya.
+**Gate Stage 9:** jangan klaim generalisasi sebelum ada dataset baru yang terkunci,
+validasi eksternal, dan metrik yang direproduksi dari repo bersih.
 
 ---
 
 ```
 NEXT GATE:
-STAGE 7 — DATASET & LABEL DESIGN
+STAGE 9 — DATASET EXPANSION & EXTERNAL VALIDATION
 ```
 
 ---
@@ -427,3 +469,5 @@ indikasi kerusakan data (semua checksum & test tetap konsisten).
 | D2 | **`data/alphafold_db/raw/README.txt` masih menyatakan folder "KOSONG dengan sengaja"**, padahal folder kini berisi 14 file dataset + README itu sendiri. | `data/alphafold_db/raw/README.txt` vs isi direktori | Rendah — file penanda sudah kedaluwarsa. Test Stage 5 check E4 sudah diperbarui untuk mengizinkan file di `raw/` |
 | D3 | **Dua besaran berbeda bernama mirip untuk PAE.** Stage 5 report §12 menyebut `max_predicted_aligned_error` (skalar API, mis. 31,75), sedangkan `pae_validation.csv` kolom `max_pae` berisi maksimum **yang teramati di matriks** (31, 29, 23, …). | Stage 5 report §12 vs `pae_validation.csv` | Rendah — bukan kontradiksi (kuantitas berbeda), tetapi berpotensi membingungkan saat verifikasi manual |
 | D4 | **Stage 1–3 tidak punya report mandiri di `docs/`.** `docs/` hanya berisi `DATASET_PLAN.md`, `TAHAP_5_*`, `TAHAP_6_*`. Bukti Stage 1–3 hanya tersebar di README + artefak `results/`. | Isi `docs/` | Rendah — celah dokumentasi, bukan celah data. Bagian 3–5 dokumen ini menutup sebagian celah tersebut |
+| D5 | **Wording label Stage 8.2 tidak presisi.** Ringkasan menyebut "Active/Binding/Metal Sites", sedangkan dataset terkunci hanya memakai **Active site + Binding site** (46 positif); metal binding tidak dimasukkan sebagai tipe terpisah. | `download/gemini-code-1792488146615.md` vs `BENCHMARK_DATASET_LOCK.md` §4 | Rendah — lock doc mengoreksi; semua laporan baru harus memakai definisi A+B |
+| D6 | **Ringkasan Stage 9 tidak konsisten dengan artefaknya.** Ringkasan menyebut 15 protein / 4.124 residu / 27 fitur (7 struktural + 20 one-hot), tetapi `download/production_dataset_100.csv` hanya berisi 6 kolom tanpa fitur struktural; beberapa nama protein juga salah (P00720 Endolysin disebut Endothiapepsin; P00644 Thermonuclease disebut RNase T1). | `download/gemini-code-1792488647858.md`, `download/production_dataset_100.csv` | Sedang — Stage 9 bukan benchmark resmi; metriknya tidak dapat direproduksi dari artefak yang ada |
