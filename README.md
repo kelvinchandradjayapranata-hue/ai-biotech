@@ -10,7 +10,7 @@
 
 <p align="center">
   <img alt="Python 3.12.10" src="https://img.shields.io/badge/Python-3.12.10-3776AB?logo=python&logoColor=white">
-  <img alt="Status: Stages 1–10.1 complete, Stage 8.2 benchmark locked" src="https://img.shields.io/badge/Status-Stages%201%E2%80%9310.1%20complete%20%C2%B7%20Stage%208.2%20benchmark%20locked-brightgreen">
+  <img alt="Status: Stages 1–10.2 complete, Stage 8.2 benchmark locked" src="https://img.shields.io/badge/Status-Stages%201%E2%80%9310.2%20complete%20%C2%B7%20Stage%208.2%20benchmark%20locked-brightgreen">
   <img alt="Data source: AlphaFold Database v6" src="https://img.shields.io/badge/Data-AlphaFold%20Database%20v6-blue">
 </p>
 
@@ -45,9 +45,14 @@ complete **102-protein / 55,503-residue** dataset with no missing structural val
 LOGO-CV metrics. **Stage 10.1** adds three radius-8.0 Å spatial-neighborhood features
 (`spatial_density_8a`, `spatial_plddt_mean_8a`, `spatial_pae_mean_8a`) to that clean dataset,
 raising median per-protein ROC from 0.7371 to 0.7786 (XGBoost) and 0.7330 to 0.7724 (Random
-Forest), with a matching rise in within-protein z-scored ROC. These remain data-engineering and
-feature-engineering milestones, not external validation, and the pooled ROC increase is not a
-like-for-like measure of generalization.
+Forest), with a matching rise in within-protein z-scored ROC. **Stage 10.2** sweeps Cα-neighborhood
+radii 6/8/10/12 Å and selects **12.0 Å** using a pre-declared rule, raising median per-protein ROC
+to 0.8120 (XGBoost) and 0.8089 (Random Forest); it also tests per-fold isotonic and Platt
+(sigmoid) calibration. Calibration fixes the absolute probability scale (Brier 0.1820 → 0.0163;
+ECE 0.3569 → 0.0016) but does not improve rank-based metrics or remove cross-protein score
+inflation. These remain data-engineering, feature-engineering, and calibration-audit milestones,
+not external validation, and the pooled ROC increase is not a like-for-like measure of
+generalization.
 
 ## Research Objectives
 
@@ -70,16 +75,20 @@ reproduces the XGBoost baseline exactly. Stage 9.5 removes the misaligned P11532
 producing a complete 102-protein / 55,503-residue dataset with zero missing structural values
 and re-trained LOGO-CV metrics. Stage 10.1 adds three spatial-neighborhood features computed from
 Cα coordinates at radius 8.0 Å, producing a 55,503 × 15 dataset; all 166,509 new values were
-reproduced independently, and LOGO-CV improves on both models, including within-protein metrics
-(see [Current Results](#current-results)).
+reproduced independently, and LOGO-CV improves on both models, including within-protein metrics.
+Stage 10.2 sweeps radii 6/8/10/12 Å, selects 12.0 Å, and tests isotonic/sigmoid calibration
+out-of-fold on the same 102 proteins; calibration improves the absolute probability scale but not
+ranking metrics or between-protein inflation (see [Current Results](#current-results)).
 
 **Future goals.** The benchmark dataset and a baseline are now in place, and the Stage 9.2
 expansion, its Stage 9.3 realignment, the Stage 9.4 103-protein scaling, the Stage 9.5
-cleansing, and the Stage 10.1 spatial feature engineering have been audited. P11532 is excluded
-in Stage 9.5; the project now aims to run external validation on proteins not used for any design
-decision, test probability calibration across proteins, and determine whether any signal
-generalizes beyond the current proteins. No broad biological hypothesis or generalizable
-predictive model exists yet. See [Limitations and Future Work](#limitations-and-future-work).
+cleansing, the Stage 10.1 spatial feature engineering, and the Stage 10.2 radius sweep +
+out-of-fold calibration have been audited. P11532 is excluded in Stage 9.5; the project now aims
+to run external validation on proteins not used for any design decision, test calibration on
+truly unseen proteins, and determine whether any signal generalizes beyond the current 102
+proteins. Feature ablation, importance stability across seeds, and radii above 12 Å remain open.
+No broad biological hypothesis or generalizable predictive model exists yet. See
+[Limitations and Future Work](#limitations-and-future-work).
 
 ## Research FAQ
 
@@ -100,7 +109,7 @@ features suitable for AI research. The current work addresses *data quality and 
 a specific biological hypothesis is not yet part of the project.
 
 **What has been completed so far?**
-Stages 1–10.1: sequence analysis, structure analysis (ubiquitin reference), residue-level feature
+Stages 1–10.2: sequence analysis, structure analysis (ubiquitin reference), residue-level feature
 extraction (ubiquitin, 76 × 28), dataset planning (7 proteins, 6 functional categories), the
 controlled AlphaFold DB download and validation (14 v6 files, checksums and sequences verified),
 and the multi-protein dataset (1,098 residues × 29 columns). All four extraction test suites pass
@@ -174,6 +183,32 @@ ROC rises by +0.0415 (XGB) / +0.0394 (RF), and within-protein z-scored ROC rises
 still **internal feature engineering, not external validation**. See
 [`docs/PROJECT_STATUS.md`](docs/PROJECT_STATUS.md) §20.
 
+**Stage 10.2** sweeps Cα–Cα neighborhood radii **6, 8, 10, and 12 Å** and selects **12.0 Å** by a
+rule fixed before the results were inspected (highest XGBoost median ROC, with RF and pooled-PR
+tie-breaks). Median per-protein ROC rises monotonically with radius: 0.7437 → 0.7786 → 0.8049 →
+0.8120 for XGBoost and 0.7331 → 0.7724 → 0.7946 → 0.8089 for Random Forest; Friedman tests across
+the four radii give p = 1.49e-06 (XGB ROC) and p = 3.32e-14 (RF ROC). Radius 12 Å is the edge of
+the tested grid, so it is the selected radius, not a proven global optimum. Cross-radius
+correlations show that density and PAE change substantially between 6 and 12 Å (Pearson 0.6297
+and 0.6384), while spatial pLDDT is nearly invariant (0.9820); collinearity with frozen features
+persists at 12 Å (`spatial_plddt_mean_12a` vs. `plddt_ca` Pearson 0.9730;
+`spatial_pae_mean_12a` vs. `pae_local_mean_k10` Spearman 0.8956).
+
+The **calibrated dataset**
+([`results/dataset/production_dataset_100_calibrated.csv`](results/dataset/production_dataset_100_calibrated.csv))
+is **55,503 × 21** — the 15 feature columns at radius 12 Å plus six out-of-fold score columns
+(`oof_{xgb,rf}_{raw,isotonic,sigmoid}`) — with 0 NaN, LF endings, 9,667,972 bytes, SHA256
+`2c4bcb3da7dfe4de82a95902f6fa3156e656cb5aece521b54d427cb42220ea3a`. Each outer LOGO fold trains
+its calibrator only on inner out-of-fold predictions from the 101 training proteins
+(`GroupKFold(3)`, `ensemble=False`); the test protein never enters training or calibration.
+Isotonic/Platt calibration fixes the probability scale dramatically (XGB Brier 0.1820 → 0.0163,
+ECE 0.3569 → 0.0016, mean predicted 0.3741 → 0.0176 vs. prevalence 0.0172) but does **not**
+improve pooled ROC (0.7956 → 0.7900/0.7947), within-protein z-scored ROC (0.7495 →
+0.7418/0.7475), or the between-protein inflation gap. Sigmoid is rank-preserving per fold;
+isotonic creates ties and worsens 58/78 RF folds. **The six OOF columns are audit outputs, not
+training features** — using them as model inputs without nested cross-validation would leak.
+See [`docs/PROJECT_STATUS.md`](docs/PROJECT_STATUS.md) §21.
+
 **Is this already an AI model for drug discovery?**
 No. There is no generalizable trained model for function prediction, no molecular docking, no
 molecular dynamics, no compound screening, and no wet-lab validation. AlphaFold itself is a
@@ -191,11 +226,13 @@ compute does not by itself produce better science. See
 
 **What are the next research goals?**
 P11532 has now been excluded in Stage 9.5, yielding a clean 102-protein / 55,503-residue
-dataset with no missing structural values, and Stage 10.1 has added audited spatial-neighborhood
-features on top of it. Use Stage 10.1 as the current feature set while keeping the A+B label
-policy, but treat the radius and feature definitions as candidates: run a radius sweep and an
-ablation against the 13 frozen features, then run **external validation** on proteins not used
-for feature selection; test probability calibration across proteins; report within-protein and
+dataset with no missing structural values. Stage 10.1 added audited spatial-neighborhood
+features, and Stage 10.2 swept radii 6/8/10/12 Å (selecting 12 Å) and tested out-of-fold
+isotonic/sigmoid calibration. Use Stage 10.2 (12 Å, 16 model features) as the current internal
+feature set while keeping the A+B label policy, but treat the radius and feature definitions as
+candidates: run a full ablation against the 13 frozen features, an importance-stability check,
+and radii above 12 Å; then run **external validation** on proteins not used for feature or radius
+selection; test probability calibration on truly unseen proteins; report within-protein and
 median per-protein metrics alongside pooled ROC; and only then evaluate whether a broader
 biological question (e.g., GO terms or EC numbers) is supportable.
 
@@ -220,7 +257,8 @@ flowchart TD
     J --> K["Production dataset<br/>103 proteins · 59,188 residues — Stage 9.4"]
     K --> K2["Cleaned production dataset<br/>102 proteins · 55,503 residues — Stage 9.5"]
     K2 --> K3["Spatial feature dataset<br/>55,503 × 15 · radius-8 Å features — Stage 10.1"]
-    K3 --> L["External validation + cross-protein calibration<br/>Stage 10.2+ — next"]
+    K3 --> K4["Multi-radius sweep + OOF calibration<br/>55,503 × 21 · radius 12 Å — Stage 10.2"]
+    K4 --> L["External validation<br/>Stage 10.3+ — next"]
 ```
 
 Each arrow is a checkpoint, not just a hand-off: the structure data is validated against
@@ -247,6 +285,7 @@ Pipeline status across all stages — as of the latest verified runs:
 | 9.4 | Production dataset — 59,188 × 12, 103 proteins, 959 positives, 79 evaluable folds | **AUDITED** — sequence features/labels 59,188/59,188 and structural features 56,028/56,028 match; XGB exact; RF pooled ROC exact, median/pooled PR not; P11532 isoform caveat |
 | 9.5 | Cleaned production dataset — 55,503 × 12, 102 proteins, 955 positives, 78 evaluable folds | **AUDITED** — P11532 (3,685 rows) excluded; 0 empty/unmodeled cells; exact row-for-row derivation; XGB median ROC 0.7371 / pooled 0.7476; RF 0.7330 / 0.7476 |
 | 10.1 | Spatial feature dataset — 55,503 × 15, 102 proteins, 955 positives, 78 evaluable folds | **AUDITED** — 3 radius-8.0 Å features; 0 NaN; 166,509 new values independently reproduced (0 mismatches); XGB median ROC 0.7786 / pooled 0.7676; RF 0.7724 / 0.7568; within-protein 0.7156 / 0.7059 |
+| 10.2 | Calibrated multi-radius dataset — 55,503 × 21, 102 proteins, 955 positives, 78 evaluable folds | **AUDITED** — radii 6/8/10/12 Å, **12 Å selected** by a pre-declared rule; Friedman p < 1.5e-06; XGB median ROC 0.8120 / pooled 0.7956; RF 0.8089 / 0.7759; isotonic/sigmoid improve Brier/ECE but not pooled/within; 6 OOF columns verified (0 mismatches); 0 NaN, LF |
 
 **The multi-protein dataset** (`results/dataset/multi_protein_residue_features.csv`) contains
 **1,098 residue rows × 29 columns**: 3 protein identifier columns (`protein_id`,
@@ -418,6 +457,86 @@ features are also collinear with existing ones (`spatial_plddt_mean_8a` vs `pldd
 candidate result, not proof that 3D geometry adds independent biological signal. Full evidence:
 [`docs/PROJECT_STATUS.md`](docs/PROJECT_STATUS.md) §20.
 
+**The Stage 10.2 calibrated dataset** ([`results/dataset/production_dataset_100_calibrated.csv`](results/dataset/production_dataset_100_calibrated.csv))
+contains **55,503 residue rows × 21 columns** from **102 proteins**: the 15 feature columns at
+radius 12.0 Å plus six out-of-fold score columns (`oof_xgb_raw`, `oof_xgb_isotonic`,
+`oof_xgb_sigmoid`, `oof_rf_raw`, `oof_rf_isotonic`, `oof_rf_sigmoid`). It has **0 NaN**, pure LF
+line endings, no BOM, and is 9,667,972 bytes. SHA256:
+`2c4bcb3da7dfe4de82a95902f6fa3156e656cb5aece521b54d427cb42220ea3a`.
+
+For each radius *R*, a residue *j ≠ i* is a neighbor of *i* when the Euclidean Cα–Cα distance is
+≤ *R*. Three features are computed per residue: neighbor count (`spatial_density_Ra`), mean
+neighbor pLDDT (`spatial_plddt_mean_Ra`), and mean directed `PAE[i, j]` to neighbors
+(`spatial_pae_mean_Ra`). The radius was selected by a rule fixed **before** the results were
+inspected: highest XGBoost median ROC across the 78 evaluable folds; if within 0.002, highest
+Random Forest median ROC; if still within 0.002, highest XGBoost pooled PR.
+
+| Model | Radius | Median ROC | Median PR | Pooled ROC | Pooled PR | Within-z ROC | Between AUC |
+|---|---:|---:|---:|---:|---:|---:|---:|
+| XGBoost | 6 Å | 0.7437 | 0.0692 | 0.7495 | 0.0584 | 0.6879 | 0.7828 |
+| XGBoost | 8 Å | 0.7786 | 0.0925 | 0.7676 | 0.0759 | 0.7156 | 0.7785 |
+| XGBoost | 10 Å | 0.8049 | 0.1000 | 0.7923 | 0.0818 | 0.7426 | 0.7820 |
+| **XGBoost** | **12 Å** | **0.8120** | **0.1255** | **0.7956** | **0.0881** | **0.7495** | 0.7828 |
+| Random Forest | 6 Å | 0.7331 | 0.0762 | 0.7462 | 0.0575 | 0.6880 | 0.7889 |
+| Random Forest | 8 Å | 0.7724 | 0.0894 | 0.7568 | 0.0668 | 0.7059 | 0.7824 |
+| Random Forest | 10 Å | 0.7946 | 0.0905 | 0.7696 | 0.0637 | 0.7231 | 0.7862 |
+| **Random Forest** | **12 Å** | **0.8089** | **0.1051** | **0.7759** | **0.0711** | **0.7338** | 0.7870 |
+
+**12.0 Å is selected.** Friedman tests reject equality across the four radii for ROC and PR in
+both models (p ≤ 1.49e-06). Paired per-fold tests show 12 Å beats 8 Å significantly on ROC and PR
+for both models, while 12 Å vs. 10 Å is significant on XGB PR and both RF metrics but not on XGB
+ROC (p = 0.0838). Because 12 Å is the largest tested radius, this is a grid-edge selection, not
+evidence of a global optimum; 14/16 Å remain untested. Cross-radius correlations show density and
+PAE are substantially different between 6 and 12 Å (Pearson 0.6297 and 0.6384), while spatial
+pLDDT is nearly invariant (0.9820). Collinearity with the frozen features persists at 12 Å:
+`spatial_plddt_mean_12a` vs. `plddt_ca` Pearson 0.9730 (Spearman 0.9674),
+`spatial_pae_mean_12a` vs. `pae_local_mean_k10` Spearman 0.8956, and `spatial_density_12a` vs.
+`plddt_ca` Pearson 0.7048.
+
+**Calibration protocol.** For every outer LOGO fold, the base model is trained on 101 proteins,
+then calibrated using only inner out-of-fold predictions from those same training proteins
+(`GroupKFold(3)`, grouped by protein, `ensemble=False`). The held-out test protein is never used
+to fit either the base model or the calibrator. `ensemble=False` keeps one base model per fold so
+the measured effect is calibration, not bagging.
+
+| Model | Method | Median ROC | Median PR | Pooled ROC | Pooled PR | Within-z ROC | Between AUC |
+|---|---|---:|---:|---:|---:|---:|---:|
+| XGBoost | raw | 0.8120 | 0.1255 | 0.7956 | 0.0881 | 0.7495 | 0.7828 |
+| XGBoost | isotonic | 0.8120 | 0.1227 | 0.7900 | 0.0833 | 0.7418 | 0.7889 |
+| XGBoost | sigmoid | 0.8120 | 0.1255 | 0.7947 | 0.0828 | 0.7475 | 0.7859 |
+| Random Forest | raw | 0.8089 | 0.1051 | 0.7759 | 0.0711 | 0.7338 | 0.7870 |
+| Random Forest | isotonic | 0.7948 | 0.1106 | 0.7699 | 0.0685 | 0.7228 | 0.7847 |
+| Random Forest | sigmoid | 0.8089 | 0.1051 | 0.7744 | 0.0653 | 0.7333 | 0.7839 |
+
+| Model | Method | Brier | Log loss | ECE (10 bins) | Mean predicted | Prevalence-on-score slope |
+|---|---|---:|---:|---:|---:|---:|
+| XGBoost | raw | 0.1820 | 0.5284 | 0.3569 | 0.3741 | 0.0865 |
+| XGBoost | isotonic | **0.0163** | 0.0812 | **0.0016** | 0.0176 | 0.9055 |
+| XGBoost | sigmoid | **0.0164** | **0.0763** | 0.0020 | 0.0176 | 0.8933 |
+| Random Forest | raw | 0.1902 | 0.5440 | 0.3681 | 0.3853 | 0.0839 |
+| Random Forest | isotonic | **0.0165** | 0.0798 | **0.0017** | 0.0176 | 0.8762 |
+| Random Forest | sigmoid | **0.0165** | **0.0781** | 0.0021 | 0.0178 | 0.8643 |
+
+**Interpretation.** Calibration is a **scale fix, not a discrimination fix**. The observed
+prevalence is 0.017206; raw scores average 0.3741 (XGB) / 0.3853 (RF), about 21–22× too high.
+After calibration, mean predicted probability is ≈ prevalence, Brier falls by >10×, and ECE falls
+by >150×; per-protein Brier and per-protein |mean − prevalence| improve on **102/102 proteins**
+for both methods and both models. But pooled ROC, pooled PR, and within-protein z-scored ROC do
+not improve, and the pooled-minus-within inflation gap does not close. Between-protein AUC moves
+only slightly and not consistently (XGB 0.7828 → 0.7889/0.7859; RF 0.7870 → 0.7847/0.7839),
+and the between-protein Pearson correlation of mean score with prevalence does not improve
+(XGB 0.4484 → 0.4370/0.4357; RF 0.4366 → 0.4166/0.4172), because the protein mean-score ordering
+is almost unchanged (Spearman ≥ 0.9895). Sigmoid is
+strictly monotone per fold, so no fold's ROC/PR changes; isotonic creates ties and improves/worsens
+fold ROC on 34/43 XGB and 18/58 RF folds, lowering RF median ROC from 0.8089 to 0.7948. Use sigmoid if
+calibrated probabilities are required; neither method constitutes external validation.
+
+**Usage warning.** The six `oof_*` columns are audit outputs, not training features. Each score
+comes from a model that did not see that row's protein, but treating them as inputs to a new model
+without nested cross-validation would leak information. The dataset is a 15-feature table plus
+evaluation columns, not a ready-made 21-feature training set. Full evidence:
+[`docs/PROJECT_STATUS.md`](docs/PROJECT_STATUS.md) §21.
+
 **Verification suites** (all measured on freshly generated outputs; each script exits `0` only if
 every check passes):
 
@@ -428,17 +547,18 @@ every check passes):
 | `src/test_afdb_download.py` | Stage 5 — file integrity, checksums, metadata | 16/16 PASS |
 | `src/test_multi_protein_features.py` | Stage 6 — recomputation from raw files; reproducibility | 24/24 PASS |
 
-**Current status:** Stages 1–10.1 are complete. A frozen Stage 8.2 benchmark and a reproducible
+**Current status:** Stages 1–10.2 are complete. A frozen Stage 8.2 benchmark and a reproducible
 ML baseline exist, alongside an independently audited 14-protein Stage 9.2 expansion, its Stage
 9.3 realignment to the frozen feature definitions, the 103-protein Stage 9.4 production
-dataset, the cleaned 102-protein Stage 9.5 dataset, and the 55,503 × 15 Stage 10.1 spatial
-dataset. XGBoost reproduces exactly at every stage; Stage 9.4 Random Forest reproduces pooled
-ROC but not median ROC or pooled PR (Stage 9.5 and 10.1 metrics are computed directly, with no
-external claim to reproduce). P11532 is excluded in Stage 9.5, leaving zero missing structural
-values. Stage 10.1 adds three audited radius-8.0 Å neighborhood features and improves both
-median and within-protein ROC, but it is still internal feature engineering. No biological
-conclusions or generalization claims are drawn from any expansion; the next gate is external
-validation and cross-protein calibration.
+dataset, the cleaned 102-protein Stage 9.5 dataset, the 55,503 × 15 Stage 10.1 spatial dataset,
+and the 55,503 × 21 Stage 10.2 calibrated dataset (radius 12 Å plus six OOF score columns).
+XGBoost reproduces exactly at every stage; Stage 9.4 Random Forest reproduces pooled ROC but not
+median ROC or pooled PR (later metrics are computed directly, with no external claim to
+reproduce). P11532 is excluded in Stage 9.5, leaving zero missing structural values. Stage 10.2
+sweeps radii 6/8/10/12 Å, selects 12 Å by a pre-declared rule, and shows that isotonic/sigmoid
+calibration fixes the probability scale but not ranking or cross-protein inflation. It is still
+internal evaluation on the same 102 proteins. No biological conclusions or generalization claims
+are drawn from any expansion; the next gate is external validation.
 
 ## Dataset Visualizations
 
@@ -479,11 +599,12 @@ ai-biotech/
 │   ├── extract_multi_protein_features.py    # Stage 6: multi-protein feature extraction
 │   └── test_*.py                            # integrity test suites (Stages 3–6)
 ├── results/
-│   ├── dataset/                             # Stage 4–10.1 outputs (CSV · JSON · PNG)
+│   ├── dataset/                             # Stage 4–10.2 outputs (CSV · JSON · PNG)
 │   │   ├── stage7_processed_dataset.csv     # frozen benchmark (1,098 × 27, SHA256-locked)
 │   │   ├── production_dataset_100_realigned.csv  # Stage 9.4 (59,188 × 12, 103 proteins)
 │   │   ├── production_dataset_100_cleaned.csv    # Stage 9.5 (55,503 × 12, 102 proteins, P11532 excluded)
-│   │   └── production_dataset_100_spatial.csv    # Stage 10.1 (55,503 × 15, + 3 radius-8 Å features)
+│   │   ├── production_dataset_100_spatial.csv    # Stage 10.1 (55,503 × 15, + 3 radius-8 Å features)
+│   │   └── production_dataset_100_calibrated.csv # Stage 10.2 (55,503 × 21, radius 12 Å + 6 OOF scores)
 │   └── ...                                  # Stage 1–3 outputs (JSON · CSV · PNG)
 ├── docs/
 │   ├── DATASET_PLAN.md                      # dataset source plan & candidate selection
@@ -592,7 +713,7 @@ in this repository should be read as experimentally validated structure or funct
 
 ## Limitations and Future Work
 
-### Completed (Stages 1–10.1)
+### Completed (Stages 1–10.2)
 
 Protein data retrieval (AlphaFold Server reference structure; 7 curated AlphaFold DB entries),
 structure validation (checksums, sequence matching, PAE shape), residue-level feature extraction
@@ -604,20 +725,23 @@ frozen feature definitions (zero feature/label mismatches against fresh AFDB/Uni
 the Stage 9.4 production dataset (103 proteins; 59,188 × 12; all sequence features/labels and
 56,028 modeled structural rows verified; XGBoost exact), the Stage 9.5 cleaned dataset
 (102 proteins; 55,503 × 12; P11532 excluded; zero missing structural values; LOGO-CV re-trained),
-and the Stage 10.1 spatial feature dataset (55,503 × 15; three radius-8.0 Å neighborhood
+the Stage 10.1 spatial feature dataset (55,503 × 15; three radius-8.0 Å neighborhood
 features; 166,509 new values independently reproduced; 0 NaN; LOGO-CV re-trained with 16
-features). Details and evidence in [Current Results](#current-results),
+features), and the Stage 10.2 multi-radius sweep + calibrated dataset (four radii; 12 Å selected
+by a pre-declared rule; 55,503 × 21 with six OOF score columns; independent verification passed;
+isotonic/sigmoid calibration improves Brier/ECE but not ranking). Details and evidence in
+[Current Results](#current-results),
 [`docs/BENCHMARK_DATASET_LOCK.md`](docs/BENCHMARK_DATASET_LOCK.md), and
-[`docs/PROJECT_STATUS.md`](docs/PROJECT_STATUS.md) §16–§20.
+[`docs/PROJECT_STATUS.md`](docs/PROJECT_STATUS.md) §16–§21.
 
 ### Not yet completed
 
 None of the following exist yet, and none are claimed:
 
 - **Generalizable predictive models.** Baselines have been trained and evaluated (Stage 8.2 on 7
-  proteins; Stage 9.5 on 102; Stage 10.1 on 102 with 16 features). Stage 8.2 pooled ROC-AUC is
-  close to random; Stage 10.1 reaches 0.7676 pooled (XGB) but only 0.7156 within-protein and has
-  no external validation. No model is claimed to predict protein function in general.
+  proteins; Stage 9.5 on 102; Stage 10.1/10.2 on 102 with 16 features). Stage 8.2 pooled ROC-AUC
+  is close to random; Stage 10.2 reaches 0.7956 pooled (XGB) but only 0.7495 within-protein and
+  has no external validation. No model is claimed to predict protein function in general.
 - **Molecular docking, molecular dynamics, compound screening.** No such analysis exists in this
   project.
 - **Experimental validation.** No wet-lab work, and the predictions have not been compared
@@ -648,22 +772,31 @@ None of the following exist yet, and none are claimed:
   configuration reproduces 0.7397 exactly; the configuration matching pooled ROC gives 0.7339.
   Stage 9.5 RF metrics are computed directly from the cleaned dataset; there is no external RF
   summary to reproduce.
-- **Pooled ROC is not a generalization metric.** The Stage 8.2 → 10.1 increase (0.5368 → 0.7676
-  XGB / 0.7568 RF) uses different datasets, prevalence (4.19% → 1.72%), and fold counts.
-  Within-protein z-scored pooled ROC is 0.6877 → 0.7156 (XGB) and 0.6891 → 0.7059 (RF),
-  between-protein AUC remains 0.7785 / 0.7824, and median per-protein ROC improves from 0.7185
-  (Stage 8.2) to 0.7786 (Stage 10.1, XGB). Absolute pooled PR falls from 0.0916 (Stage 8.2) to
-  0.0759 (Stage 10.1, XGB). The Stage 9.4 value (0.7575) was partly inflated by P11532 and drops
-  to 0.7476 after cleansing.
-- **Spatial features are collinear and radius is fixed.** `spatial_plddt_mean_8a` correlates
-  0.9885 (Pearson) with `plddt_ca`, and `spatial_pae_mean_8a` correlates 0.8800 (Spearman) with
-  `pae_local_mean_k10`. Only `spatial_density_8a` is relatively distinct. Radius 8.0 Å was chosen
-  a priori; no radius sweep, feature ablation, or importance-stability test has been run, and the
-  improvement is internal to the same 102 proteins.
-- **Stage 10.1 inputs are outside the repository.** `download/` contains no PDB/CIF/PAE files;
-  the extractor used the audited Stage 9.4 AFDB cache in a temporary directory. The dataset
-  SHA256 is reproducible from that cache, but a fresh clone cannot rerun extraction without
-  obtaining the same structural files.
+- **Pooled ROC is not a generalization metric.** The Stage 8.2 → 10.2 increase (0.5368 → 0.7956
+  XGB / 0.7759 RF) uses different datasets, prevalence (4.19% → 1.72%), and fold counts.
+  Within-protein z-scored pooled ROC is 0.6877 → 0.7495 (XGB) and 0.6891 → 0.7338 (RF),
+  between-protein AUC remains 0.7828 / 0.7870, and median per-protein ROC improves from 0.7185
+  (Stage 8.2) to 0.8120 (Stage 10.2, XGB). Absolute pooled PR falls from 0.0916 (Stage 8.2) to
+  0.0881 (Stage 10.2, XGB), but the datasets are not like-for-like. The Stage 9.4 value (0.7575)
+  was partly inflated by P11532 and drops to 0.7476 after cleansing.
+- **Spatial features are collinear; the radius is swept but not globally resolved.**
+  At 12 Å, `spatial_plddt_mean_12a` correlates 0.9730 (Pearson) with `plddt_ca`,
+  `spatial_pae_mean_12a` correlates 0.8956 (Spearman) with `pae_local_mean_k10`, and
+  `spatial_density_12a` correlates 0.7048 (Pearson) with `plddt_ca`. Radius 12 Å was selected by
+  a pre-declared rule across 6/8/10/12 Å, but it is the edge of the tested grid; feature
+  ablation, importance-stability checks, and radii above 12 Å have not been run. All improvements
+  remain internal to the same 102 proteins.
+- **Probability calibration fixes scale, not discrimination or cross-protein inflation.** Raw
+  scores average 0.3741 (XGB) against a prevalence of 0.0172. Isotonic/sigmoid calibration brings
+  Brier from 0.1820 to 0.0163 and ECE from 0.3569 to 0.0016, but pooled ROC moves 0.7956 →
+  0.7900/0.7947, within-protein z-scored ROC 0.7495 → 0.7418/0.7475, and between-protein AUC only
+  0.7828 → 0.7889/0.7859. Isotonic creates ties and perturbs fold rankings; sigmoid preserves
+  them. The six `oof_*` columns are audit outputs, not training features, and require nested CV
+  if reused.
+- **Stage 10.1/10.2 inputs are outside the repository.** `download/` contains no PDB/CIF/PAE
+  files; the extractors used the audited Stage 9.4 AFDB cache in a temporary directory. The
+  dataset SHA256s are reproducible from that cache, but a fresh clone cannot rerun extraction
+  without obtaining the same structural files.
 - **P00720 absent from AlphaFold DB.** Endolysin returns HTTP 404, so the processed Stage
   9.2/9.3 datasets have 14 proteins even though the metadata file covers 15.
 - **Prediction-only ground truth.** The datasets store AlphaFold predictions with no attached
@@ -674,19 +807,20 @@ None of the following exist yet, and none are claimed:
 
 1. **P11532 is excluded in Stage 9.5.** If a sequence-aligned full-length source becomes
    available, rebuild it as a separate artifact; do not edit the cleaned dataset.
-2. **Decide the benchmark status of Stage 9.3, 9.4, 9.5, and 10.1** — lock each as a separate
-   benchmark with its own SHA256-bearing entry, or keep them as expansion artifacts. Stage 9.2
-   remains historical only.
+2. **Decide the benchmark status of Stage 9.3, 9.4, 9.5, 10.1, and 10.2** — lock each as a
+   separate benchmark with its own SHA256-bearing entry, or keep them as expansion artifacts.
+   Stage 9.2 remains historical only.
 3. **Keep the Stage 8.2 benchmark frozen** — create a new dataset version and lock entry rather
    than editing the current artifact.
-4. **Treat Stage 10.1 as a feature candidate, not a conclusion.** Run a radius sweep, an
-   ablation against the 13 frozen features, and an importance-stability check before promoting
+4. **Treat Stage 10.2 as the current spatial candidate, not a conclusion.** The radius sweep is
+   done and selects 12 Å, but that is the grid edge; run a full ablation against the 13 frozen
+   features, an importance-stability check across seeds, and radii above 12 Å before promoting
    the spatial features into a new benchmark.
-5. **Run external validation** on proteins not used for feature selection, report probability
-   calibration across proteins, and include within-protein and median per-protein metrics rather
-   than relying on pooled ROC.
-6. **Pin ML dependencies** (`scikit-learn`, `xgboost`, `scipy`) before running experiments from a
-   clean checkout.
+5. **Run external validation** on proteins not used for feature or radius selection, test
+   probability calibration on truly unseen proteins, and include within-protein and median
+   per-protein metrics rather than relying on pooled ROC.
+6. **Pin ML dependencies** (`scikit-learn`, `xgboost`, `scipy`, `numpy`, `pandas`) before running
+   experiments from a clean checkout.
 7. **Evaluate broader label policies** (GO terms, EC numbers) only after the expanded dataset
    exists; the current A+B benchmark must remain comparable.
 
@@ -697,12 +831,14 @@ All work in this repository has been conducted at a limited scale: the frozen be
 each covered 14 proteins / 3,960 residue rows and about 9.3 MB of AlphaFold DB CIF/PAE files;
 the Stage 9.4 audit covered 103 proteins / 59,188 residue rows, 206 CIF/PAE files (~175 MB),
 and a 4.6 MB processed CSV; the Stage 9.5 cleansing produced a 4.5 MB cleaned CSV and re-ran
-LOGO-CV on 102 folds without additional downloads; and Stage 10.1 computed radius-8.0 Å
+LOGO-CV on 102 folds without additional downloads; Stage 10.1 computed radius-8.0 Å
 neighborhood features for all 102 proteins from the existing CIF/PAE cache, producing a 5.3 MB
-CSV and re-running LOGO-CV with 16 features. All were processed end-to-end on a standard machine
-with plain Python
-libraries (Biopython, pandas, NumPy, matplotlib). **No GPU or HPC resource is required to run or
-reproduce the current pipeline** — a laptop suffices.
+CSV and re-running LOGO-CV with 16 features; and Stage 10.2 computed four radii for all 102
+proteins and ran 102 outer LOGO folds with an inner 3-fold calibrator for each of two models and
+two calibration methods, producing a 9.7 MB CSV. All were processed end-to-end on a standard
+machine with plain Python
+libraries (Biopython, pandas, NumPy, scikit-learn, XGBoost, matplotlib). **No GPU or HPC resource
+is required to run or reproduce the current pipeline** — a laptop suffices.
 
 Future stages may differ. If the project moves toward larger-scale protein representation
 learning, model training and evaluation, or other computationally demanding experiments —
@@ -738,7 +874,7 @@ a technical guide to Biopython's role in modern bioinformatics and AI4Bio.
 
 | Document | Contents |
 |---|---|
-| [`docs/PROJECT_STATUS.md`](docs/PROJECT_STATUS.md) | Single source of truth for project status; §16–§20 contain the Stage 9.2, 9.3, 9.4, 9.5, and 10.1 audits |
+| [`docs/PROJECT_STATUS.md`](docs/PROJECT_STATUS.md) | Single source of truth for project status; §16–§21 contain the Stage 9.2, 9.3, 9.4, 9.5, 10.1, and 10.2 audits |
 | [`docs/BENCHMARK_DATASET_LOCK.md`](docs/BENCHMARK_DATASET_LOCK.md) | Frozen benchmark contract, label policy, fold map, and Stage 8.2 metrics |
 | [`docs/DATASET_PLAN.md`](docs/DATASET_PLAN.md) | Dataset source plan and candidate selection |
 | [`docs/TAHAP_5_AFDB_DOWNLOAD_REPORT.md`](docs/TAHAP_5_AFDB_DOWNLOAD_REPORT.md) | Stage 5 download and integrity report |
