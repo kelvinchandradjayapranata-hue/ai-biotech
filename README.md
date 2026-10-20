@@ -10,7 +10,7 @@
 
 <p align="center">
   <img alt="Python 3.12.10" src="https://img.shields.io/badge/Python-3.12.10-3776AB?logo=python&logoColor=white">
-  <img alt="Status: Stages 1–8.2 complete, benchmark locked" src="https://img.shields.io/badge/Status-Stages%201%E2%80%938.2%20complete%20%C2%B7%20benchmark%20locked-brightgreen">
+  <img alt="Status: Stages 1–9.2 complete, Stage 8.2 benchmark locked" src="https://img.shields.io/badge/Status-Stages%201%E2%80%939.2%20complete%20%C2%B7%20Stage%208.2%20benchmark%20locked-brightgreen">
   <img alt="Data source: AlphaFold Database v6" src="https://img.shields.io/badge/Data-AlphaFold%20Database%20v6-blue">
 </p>
 
@@ -35,7 +35,10 @@ about what it does and does not show.
 and benchmark-baseline* project. It is **not** a finished drug-discovery system: there is no
 molecular docking, no molecular dynamics, no compound screening, and no wet-lab validation. A
 reproducible ML baseline now exists (Stage 8.2, leave-one-protein-out cross-validation), but it is
-a **benchmark for comparison**, not evidence of biological generalization.
+a **benchmark for comparison**, not evidence of biological generalization. A second, independently
+audited expansion (Stage 9.2) covers 14 proteins / 3,960 residues built from real AlphaFold DB
+structures; its feature definitions differ from the frozen Stage 8.2 benchmark in two documented
+places, so it is a separate dataset — not a replacement.
 
 ## Research Objectives
 
@@ -49,22 +52,27 @@ residue-level feature extraction with fully documented definitions and units, co
 construction of a 7-protein dataset from the AlphaFold Database, integrity validation
 (checksums, sequence matching, and recomputation of derived values from the raw prediction
 files), plus a frozen Stage 7 benchmark and a reproduced Stage 8.2 leave-one-protein-out
-baseline.
+baseline. Stage 9.2 adds an independently audited 14-protein / 3,960-residue expansion built
+from real AlphaFold DB CIF/PAE files, with A+B labels verified against UniProt. Its metrics
+are reproducible, but two feature definitions differ from the frozen Stage 8.2 benchmark
+(see [Current Results](#current-results)).
 
-**Future goals.** The benchmark dataset and a baseline are now in place. The project aims to
-expand the dataset beyond the current validation set (15–100+ proteins), rebuild features from
-raw AlphaFold DB structures, add external validation, and test whether any signal generalizes
-beyond the seven current proteins. No broad biological hypothesis or generalizable predictive
-model exists yet. See [Limitations and Future Work](#limitations-and-future-work).
+**Future goals.** The benchmark dataset and a baseline are now in place, and the Stage 9.2
+expansion has been audited. The project aims to reconcile the Stage 9.2 feature definitions
+with the frozen benchmark (or lock Stage 9.2 as a separate benchmark), add external validation
+on proteins not used for any design decision, and test whether any signal generalizes beyond
+the current proteins. No broad biological hypothesis or generalizable predictive model exists
+yet. See [Limitations and Future Work](#limitations-and-future-work).
 
 ## Research FAQ
 
 **What is this project about?**
 An early-stage AI4Bio / computational biology research project. It builds and validates a data
 pipeline that turns protein sequences into AlphaFold-predicted structures and then into a
-machine-readable, residue-level feature dataset (currently 7 proteins, 1,098 residues). The
-project also maintains a frozen benchmark with a binary functional-site label and a reproducible
-leave-one-protein-out ML baseline (Stage 8.2).
+machine-readable, residue-level feature dataset. The frozen Stage 7 benchmark contains 7
+proteins / 1,098 residues; the audited Stage 9.2 expansion contains 14 proteins / 3,960
+residues. The project also maintains a frozen benchmark with a binary functional-site label and
+a reproducible leave-one-protein-out ML baseline (Stage 8.2).
 
 **What scientific problem does it aim to address?**
 How protein structural information — including the confidence measures that come with predicted
@@ -73,7 +81,7 @@ features suitable for AI research. The current work addresses *data quality and 
 a specific biological hypothesis is not yet part of the project.
 
 **What has been completed so far?**
-Stages 1–8.2: sequence analysis, structure analysis (ubiquitin reference), residue-level feature
+Stages 1–9.2: sequence analysis, structure analysis (ubiquitin reference), residue-level feature
 extraction (ubiquitin, 76 × 28), dataset planning (7 proteins, 6 functional categories), the
 controlled AlphaFold DB download and validation (14 v6 files, checksums and sequences verified),
 and the multi-protein dataset (1,098 residues × 29 columns). All four extraction test suites pass
@@ -82,6 +90,16 @@ UniProt Active site + Binding site labels (46 positives) and seven leave-one-pro
 Stage 8.2 adds a reproducible XGBoost / Random Forest baseline; XGBoost matches the delivered
 summary exactly, and Random Forest agrees within a small tolerance. Details:
 [`docs/BENCHMARK_DATASET_LOCK.md`](docs/BENCHMARK_DATASET_LOCK.md).
+
+**Stage 9.2** scales the data to **14 proteins / 3,960 residues / 129 positives** using real
+AlphaFold DB CIF and PAE files. An independent audit recomputed every structural feature from
+the raw files (pLDDT, PAE row/column, atom count), verified sequences and checksums 14/14, and
+confirmed the A+B labels against live UniProt annotations with zero mismatches. The LOGO-CV
+metrics reproduce (XGBoost exactly; Random Forest within ≤0.0011). Two caveats are documented:
+`pae_local_mean_k10` is computed with a ±5 window including the residue itself (not the frozen
+±10 definition), and histidine is classified as `aromatic` rather than `basic`. Stage 9.2 is
+therefore a separate dataset and is **not directly comparable** to the frozen Stage 8.2
+benchmark. See [`docs/PROJECT_STATUS.md`](docs/PROJECT_STATUS.md) §16 for the full audit.
 
 **Is this already an AI model for drug discovery?**
 No. There is no generalizable trained model for function prediction, no molecular docking, no
@@ -120,7 +138,8 @@ flowchart TD
     E --> F["Multi-protein feature table<br/>1,098 residues × 29 columns — Stage 6"]
     F --> G["Benchmark dataset<br/>1,098 × 27 · A+B label · 7-fold LOGO — Stage 7"]
     G --> H["LOGO-CV baseline<br/>XGBoost + Random Forest — Stage 8.2"]
-    H --> I["Dataset expansion + external validation<br/>Stage 9 — next"]
+    H --> I["Real-AFDB expansion<br/>14 proteins · 3,960 residues — Stage 9.2"]
+    I --> J["Feature-definition reconciliation + external validation<br/>Stage 9.3 — next"]
 ```
 
 Each arrow is a checkpoint, not just a hand-off: the structure data is validated against
@@ -142,6 +161,7 @@ Pipeline status across all stages — as of the latest verified runs:
 | 6 | Multi-protein dataset — 1,098 residues × 29 columns | **24/24 tests PASS** |
 | 7 | Benchmark dataset — 1,098 × 27, A+B label, 7-fold LOGO | **LOCKED** — SHA256 + audit 7/7; see lock doc |
 | 8.2 | LOGO-CV baseline — XGBoost + Random Forest | **VERIFIED** — XGB exact; RF within tolerance |
+| 9.2 | Real-AFDB expansion — 3,960 × 12, 14 proteins, A+B label, 14-fold LOGO | **AUDITED** — features/labels 100% match AFDB + UniProt; metrics reproduced; 2 feature-definition caveats |
 
 **The multi-protein dataset** (`results/dataset/multi_protein_residue_features.csv`) contains
 **1,098 residue rows × 29 columns**: 3 protein identifier columns (`protein_id`,
@@ -168,6 +188,29 @@ is frozen at **1,098 × 27**, with `target_y` (UniProt Active site + Binding sit
 [`docs/BENCHMARK_DATASET_LOCK.md`](docs/BENCHMARK_DATASET_LOCK.md) for the schema, fold map,
 freeze policy, and official Stage 8.2 metrics.
 
+**The Stage 9.2 expansion** ([`results/dataset/stage9_processed_dataset.csv`](results/dataset/stage9_processed_dataset.csv))
+contains **3,960 residue rows × 12 columns** from **14 proteins**, with the same strict A+B
+label policy (**129 positives, 3.26%**) and 14 leave-one-protein-out folds (13 evaluable;
+insulin P01308 has zero positives). SHA256:
+`58e55a293b66c13dd4ca4437f1d268f69fc212c93376f58488a692998255e10c`.
+
+| Model | Median ROC-AUC (IQR) | Median PR-AUC (IQR) | Pooled ROC-AUC | Pooled PR-AUC |
+|---|---:|---:|---:|---:|
+| XGBoost | **0.7092** (0.1580) | **0.1509** (0.1260) | **0.6484** | **0.1022** |
+| Random Forest | **0.7305** (0.1423) | **0.1852** (0.2622) | **0.6523** | **0.0996** |
+
+**Independent audit.** Every structural feature was recomputed from freshly downloaded AFDB
+v6 CIF/PAE files: `plddt_ca`, `pae_mean_row`, `pae_mean_col`, `n_atoms`, hydropathy, and charge
+match 3,960/3,960 rows; sequences and checksums match 14/14; and `target_y` matches live
+UniProt A+B annotations with zero mismatches. The metrics reproduce (XGBoost exactly;
+Random Forest within ≤0.0011). Two deviations from the frozen Stage 3/8.2 definitions are
+recorded rather than silently corrected: `pae_local_mean_k10` uses a ±5 window **including**
+the residue itself (not ±10 excluding it), and histidine is classified as `aromatic` rather
+than `basic`. P00720 (Endolysin) has no AlphaFold DB entry (HTTP 404), so the processed dataset
+has 14 proteins while the 15-protein metadata file includes it. Stage 9.2 is therefore
+**audited but not locked**, and its metrics are **not directly comparable** to Stage 8.2.
+Full evidence: [`docs/PROJECT_STATUS.md`](docs/PROJECT_STATUS.md) §16.
+
 **Verification suites** (all measured on freshly generated outputs; each script exits `0` only if
 every check passes):
 
@@ -178,9 +221,11 @@ every check passes):
 | `src/test_afdb_download.py` | Stage 5 — file integrity, checksums, metadata | 16/16 PASS |
 | `src/test_multi_protein_features.py` | Stage 6 — recomputation from raw files; reproducibility | 24/24 PASS |
 
-**Current status:** Stages 1–8.2 are complete. A frozen benchmark and a reproducible ML baseline
-exist, but the baseline is weak and heterogeneous; no biological conclusions or generalization
-claims are drawn from it. The next gate is dataset expansion and external validation.
+**Current status:** Stages 1–9.2 are complete. A frozen Stage 8.2 benchmark and a reproducible
+ML baseline exist, alongside an independently audited 14-protein Stage 9.2 expansion. The
+baseline is weak and heterogeneous, and Stage 9.2 differs from the frozen benchmark in two
+feature definitions; no biological conclusions or generalization claims are drawn from either.
+The next gate is feature-definition reconciliation and external validation.
 
 ## Dataset Visualizations
 
@@ -331,14 +376,17 @@ in this repository should be read as experimentally validated structure or funct
 
 ## Limitations and Future Work
 
-### Completed (Stages 1–8.2)
+### Completed (Stages 1–9.2)
 
 Protein data retrieval (AlphaFold Server reference structure; 7 curated AlphaFold DB entries),
 structure validation (checksums, sequence matching, PAE shape), residue-level feature extraction
 (ubiquitin 76 × 28; multi-protein 1,098 × 29), the integrity test suites (72 checks across
-Stages 3–6), the frozen Stage 7 benchmark (1,098 × 27; A+B labels; 7-fold LOGO), and the
-reproduced Stage 8.2 baseline. Details and evidence in [Current Results](#current-results) and
-[`docs/BENCHMARK_DATASET_LOCK.md`](docs/BENCHMARK_DATASET_LOCK.md).
+Stages 3–6), the frozen Stage 7 benchmark (1,098 × 27; A+B labels; 7-fold LOGO), the reproduced
+Stage 8.2 baseline, and the independently audited Stage 9.2 expansion (14 proteins; 3,960 × 12;
+real AFDB CIF/PAE; A+B labels verified against UniProt; metrics reproduced). Details and
+evidence in [Current Results](#current-results),
+[`docs/BENCHMARK_DATASET_LOCK.md`](docs/BENCHMARK_DATASET_LOCK.md), and
+[`docs/PROJECT_STATUS.md`](docs/PROJECT_STATUS.md) §16.
 
 ### Not yet completed
 
@@ -354,19 +402,26 @@ None of the following exist yet, and none are claimed:
 
 ### Current limitations
 
-- **Small, narrow dataset.** 7 single-chain proteins (1,098 residues; 5 human + 2 non-human) are
-  a pipeline-validation set — not a basis for biological generalization. Residues within one
-  protein are strongly correlated, so 1,098 rows are not 1,098 independent samples.
-- **Prediction-only ground truth.** The dataset stores AlphaFold predictions with no attached
+- **Small, narrow dataset.** The frozen benchmark has 7 single-chain proteins (1,098 residues;
+  5 human + 2 non-human); the Stage 9.2 expansion has 14 proteins / 3,960 residues. Neither is a
+  basis for biological generalization, and residues within one protein are strongly correlated,
+  so row counts are not independent sample sizes.
+- **Stage 9.2 feature-definition drift.** Its `pae_local_mean_k10` is a ±5 window including the
+  residue itself, and histidine is classified `aromatic`; both differ from the frozen Stage 3/8.2
+  definitions. Metrics are internally reproducible but not directly comparable to Stage 8.2.
+- **P00720 absent from AlphaFold DB.** Endolysin returns HTTP 404, so the processed Stage 9.2
+  dataset has 14 proteins even though the metadata file covers 15.
+- **Prediction-only ground truth.** The datasets store AlphaFold predictions with no attached
   experimental reference structures.
 - **Single-chain only.** No complexes, no ligands, no post-translational modifications.
 
 ### Future direction
 
-1. **Expand the dataset** beyond the current 7-protein validation set (15–100+ proteins),
-   rebuilding features from raw AlphaFold DB structures.
-2. **Keep the benchmark frozen** — create a new dataset version and lock entry rather than
-   editing the current artifact.
+1. **Reconcile Stage 9.2 with the frozen feature definitions** — either rebuild a Stage 9.3
+   using `pae_local_mean_k10 = |i-j| ≤ 10, j ≠ i` and histidine = `basic`, or lock Stage 9.2 as
+   a separate benchmark with its own documented definitions.
+2. **Keep the Stage 8.2 benchmark frozen** — create a new dataset version and lock entry rather
+   than editing the current artifact.
 3. **Run external validation** on proteins not used for feature selection, and report probability
    calibration across proteins.
 4. **Pin ML dependencies** (`scikit-learn`, `xgboost`, `scipy`) before running experiments from a
@@ -376,10 +431,12 @@ None of the following exist yet, and none are claimed:
 
 ## Computing Resources and Research Support
 
-All work in this repository has been conducted at a limited scale: 7 proteins, 1,098 residue
-rows, and about 1.5 MB of prediction files, processed end-to-end on a standard machine with plain
-Python libraries (Biopython, pandas, NumPy, matplotlib). **No GPU or HPC resource is required to
-run or reproduce the current pipeline** — a laptop suffices.
+All work in this repository has been conducted at a limited scale: the frozen benchmark covers
+7 proteins / 1,098 residue rows and about 1.5 MB of prediction files, while the Stage 9.2 audit
+covered 14 proteins / 3,960 residue rows and about 9.3 MB of AlphaFold DB CIF/PAE files. Both
+were processed end-to-end on a standard machine with plain Python libraries (Biopython, pandas,
+NumPy, matplotlib). **No GPU or HPC resource is required to run or reproduce the current
+pipeline** — a laptop suffices.
 
 Future stages may differ. If the project moves toward larger-scale protein representation
 learning, model training and evaluation, or other computationally demanding experiments —
@@ -415,7 +472,7 @@ a technical guide to Biopython's role in modern bioinformatics and AI4Bio.
 
 | Document | Contents |
 |---|---|
-| [`docs/PROJECT_STATUS.md`](docs/PROJECT_STATUS.md) | Single source of truth for project status |
+| [`docs/PROJECT_STATUS.md`](docs/PROJECT_STATUS.md) | Single source of truth for project status; §16 contains the Stage 9.2 audit |
 | [`docs/BENCHMARK_DATASET_LOCK.md`](docs/BENCHMARK_DATASET_LOCK.md) | Frozen benchmark contract, label policy, fold map, and Stage 8.2 metrics |
 | [`docs/DATASET_PLAN.md`](docs/DATASET_PLAN.md) | Dataset source plan and candidate selection |
 | [`docs/TAHAP_5_AFDB_DOWNLOAD_REPORT.md`](docs/TAHAP_5_AFDB_DOWNLOAD_REPORT.md) | Stage 5 download and integrity report |
