@@ -9,7 +9,7 @@ diubah, tidak ada eksperimen baru dijalankan, tidak ada unduhan dilakukan.
 
 ```
 PROJECT STATUS:
-STAGE 1–9.5 AUDITED — STAGE 8.2 BENCHMARK LOCKED
+STAGE 1–10.1 AUDITED — STAGE 8.2 BENCHMARK LOCKED
 DATA PIPELINE: VALIDATED
 BIOLOGICAL ML: BASELINE REPRODUCED — NO GENERALIZATION CLAIM
 ```
@@ -74,8 +74,23 @@ BIOLOGICAL ML: BASELINE REPRODUCED — NO GENERALIZATION CLAIM
 > dataset bersih pertama pada skala 102 protein, tetap **bukan** validasi eksternal dan
 > bukan bukti generalisasi.
 >
-> Bagian 1, 2, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19 (Stage 9.5, baru), dan 20 di
-> bawah sudah diperbarui; bagian 3–8 tetap merupakan catatan historis Stage 1–6.
+> **Update 2026-10-20 — Stage 10.1.** Fitur lingkungan spasial 3D ditambahkan ke dataset
+> bersih: radius **8,0 Å** dari koordinat Cα, dengan tiga fitur baru
+> `spatial_density_8a`, `spatial_plddt_mean_8a`, dan `spatial_pae_mean_8a` (definisi di
+> §20.2). Dataset `results/dataset/production_dataset_100_spatial.csv` berisi
+> **55.503 × 15** (102 protein, 955 positif), **0 NaN** pada ketiga kolom baru, LF murni,
+> 5.313.161 B, SHA256
+> `8e21534055132c8cf4eb823e1abda224a15776b437b94bbc851f1ea4a99a3319`. Seluruh
+> 55.503 baris diverifikasi ulang terhadap CIF/PAE AFDB; parser independen mereproduksi
+> seluruh **166.509 nilai fitur baru tanpa selisih**. LOGO-CV dengan 16 fitur (13 frozen
+> + 3 spasial): **XGBoost** median ROC 0,7786 / PR 0,0925, pooled ROC 0,7676 / PR 0,0759
+> / gain 4,41×; **Random Forest** median ROC 0,7724 / PR 0,0894, pooled ROC 0,7568 / PR
+> 0,0668 / gain 3,88×. Peningkatan vs Stage 9.5 juga terlihat pada within-protein
+> z-scored ROC (0,7156 XGB / 0,7059 RF vs 0,6877 / 0,6891), tetapi tetap **bukan**
+> validasi eksternal dan **bukan** bukti generalisasi. Rincian di §20.
+>
+> Bagian 1, 2, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20 (Stage 10.1, baru), dan 21
+> di bawah sudah diperbarui; bagian 3–8 tetap merupakan catatan historis Stage 1–6.
 
 ---
 
@@ -135,32 +150,43 @@ Yang **sudah tercapai** dan terverifikasi:
   (artefak P11532 hilang), pooled PR naik +0,0034, median per-protein hampir tidak berubah
   (+0,0012); within-protein z-scored ROC tetap 0,6877/0,6891 — pembersihan memperbaiki
   validitas, bukan generalisasi (§19).
+- **Stage 10.1:** tiga fitur lingkungan spasial radius **8,0 Å** ditambahkan ke dataset
+  bersih: `spatial_density_8a`, `spatial_plddt_mean_8a`, `spatial_pae_mean_8a`. Dataset
+  **55.503 × 15**, 102 protein, 955 positif, **0 NaN** pada kolom baru; seluruh nilai
+  diverifikasi ulang terhadap CIF/PAE AFDB (0 mismatch). LOGO-CV 16 fitur: XGBoost
+  median ROC 0,7786 / PR 0,0925, pooled ROC 0,7676 / PR 0,0759 / gain 4,41×; RF median
+  ROC 0,7724 / PR 0,0894, pooled ROC 0,7568 / PR 0,0668 / gain 3,88×. Within-protein
+  z-scored ROC naik ke 0,7156 (XGB) / 0,7059 (RF), jadi peningkatan tidak hanya berasal
+  dari urutan antar-protein; tetapi ini masih evaluasi internal, bukan validasi
+  eksternal (§20).
 
 Yang **BELUM tercapai** (dan tidak diklaim):
 
 - **Belum ada bukti predictive power yang umum.** Baseline Stage 8.2 lemah dan sangat
   heterogen antar-protein: pooled ROC-AUC 0,5368 (XGB) / 0,5062 (RF), sedangkan pooled
-  PR-AUC 0,0916 / 0,1028 terhadap baseline prevalensi 0,0419. Stage 9.4 sempat mencapai
-  pooled ROC XGB 0,7575, tetapi **turun ke 0,7476 setelah P11532 dikeluarkan** di Stage
-  9.5; angka itu tetap **tidak** berasal dari validasi eksternal dan sebagian dipengaruhi
-  perbedaan antar-protein (§18.5, §19.4). Median per-protein Stage 9.5 hanya 0,7371 (XGB)
-  / 0,7330 (RF). Tidak ada klaim kemampuan generalisasi.
-- **Skala masih belum memadai untuk klaim statistik.** Stage 9.5 berisi 102 protein /
-  55.503 residu, tetapi hanya 955 positif (1,72%), 24 protein tanpa positif, dan residu
+  PR-AUC 0,0916 / 0,1028 terhadap baseline prevalensi 0,0419. Stage 9.5 mencapai pooled
+  ROC 0,7476 (XGB/RF); Stage 10.1 menambah fitur spasial dan menaikkannya ke 0,7676
+  (XGB) / 0,7568 (RF), dengan median per-protein 0,7786 / 0,7724. Kenaikan ini juga
+  terlihat pada within-protein z-scored ROC (0,7156 / 0,7059), tetapi seluruh evaluasi
+  masih **internal** dan belum ada holdout eksternal; pooled ROC tetap dipengaruhi
+  perbedaan antar-protein (§19.4, §20.6). Tidak ada klaim kemampuan generalisasi.
+- **Skala masih belum memadai untuk klaim statistik.** Stage 9.5/10.1 berisi 102 protein
+  / 55.503 residu, tetapi hanya 955 positif (1,72%), 24 protein tanpa positif, dan residu
   dalam satu protein sangat berkorelasi. Ini bukan 55.503 sampel independen; komposisi
   protein juga masih didominasi protein larut/globular dan belum diseleksi sebagai
-  holdout eksternal.
+  holdout eksternal. Stage 10.1 menambah fitur, **bukan** protein baru.
 - **Belum ada validasi eksternal** pada protein baru, struktur eksperimen, atau dataset
   independen. Belum ada uji kalibrasi probabilitas lintas-protein. Stage 9.4/9.5 adalah
-  pembesaran/pembersihan dataset, **bukan** validasi eksternal.
+  pembesaran/pembersihan dataset, dan Stage 10.1 adalah feature engineering; ketiganya
+  **bukan** validasi eksternal.
 - **Label masih terbatas pada A+B.** Belum ada label multi-kelas, GO terms, EC numbers,
   atau skema label alternatif.
-- **Stage 9.2, 9.3, 9.4, dan 9.5 bukan validasi eksternal dan bukan klaim generalisasi.**
-  Stage 9.2/9.3 berisi 14 protein / 129 positif; Stage 9.4 berisi 103 protein / 959
-  positif; Stage 9.5 berisi 102 protein / 955 positif setelah P11532 dikeluarkan. Pooled
-  ROC Stage 9.5 (0,7476) masih lebih tinggi dari Stage 8.2, tetapi dataset dan
-  prevalensinya berbeda, dan pooled ROC dipengaruhi perbedaan skor antar-protein. Belum
-  ada holdout eksternal.
+- **Stage 9.2, 9.3, 9.4, 9.5, dan 10.1 bukan validasi eksternal dan bukan klaim
+  generalisasi.** Stage 9.2/9.3 berisi 14 protein / 129 positif; Stage 9.4 berisi 103
+  protein / 959 positif; Stage 9.5/10.1 berisi 102 protein / 955 positif. Pooled ROC
+  Stage 10.1 (0,7676 XGB / 0,7568 RF) lebih tinggi dari Stage 8.2, tetapi dataset,
+  fitur, dan prevalensinya berbeda, dan pooled ROC dipengaruhi perbedaan skor
+  antar-protein. Belum ada holdout eksternal.
 - **P11532 sudah dikeluarkan, bukan diperbaiki.** Tidak ada entri AFDB full-length
   kanonik untuk P11532 (hanya 14 isoform; §18.3), sehingga Stage 9.5 menyelesaikannya
   dengan **exclusion**. Rebuild dari sumber struktur full-length tetap belum dilakukan;
@@ -169,11 +195,13 @@ Yang **BELUM tercapai** (dan tidak diklaim):
 
 Posisi jujur: **infrastruktur data selesai dan tervalidasi; benchmark ML baseline sudah
 ada dan terverifikasi, ditambah ekspansi/realignment Stage 9.2–9.3, production scaling
-Stage 9.4 (103 protein), dan pembersihan Stage 9.5 (102 protein, P11532 dikeluarkan)
-yang nyata dan diaudit — tetapi belum ada bukti generalisasi biologis.** Dataset Stage
-9.5 kini bersih secara struktural, tetapi pooled ROC-nya masih dipengaruhi perbedaan
-antar-protein dan turun setelah artefak P11532 dihapus. Fokus berikutnya adalah validasi
-eksternal dan kalibrasi lintas-protein — bukan mengklaim performa.
+Stage 9.4 (103 protein), pembersihan Stage 9.5 (102 protein, P11532 dikeluarkan), dan
+feature engineering spasial Stage 10.1 yang nyata dan diaudit — tetapi belum ada bukti
+generalisasi biologis.** Dataset Stage 10.1 kini bersih secara struktural dan memiliki
+tiga fitur lingkungan 3D yang menaikkan metrik internal, termasuk within-protein ROC
+(0,7156 XGB / 0,7059 RF); namun pooled ROC masih dipengaruhi perbedaan antar-protein,
+dan tidak ada holdout eksternal. Fokus berikutnya adalah validasi eksternal dan
+kalibrasi lintas-protein — bukan mengklaim performa.
 
 ---
 
@@ -186,12 +214,13 @@ eksternal dan kalibrasi lintas-protein — bukan mengklaim performa.
 | Validasi integritas data | **BERHASIL** | SHA256 dihitung ulang & cocok; sekuens 7/7 MATCH |
 | Feature extraction | **BERHASIL** | 1098 × 29 kolom, 24/24 test PASS |
 | Reproducibility | **BERHASIL** | Output dataset byte-identical antar-run |
-| Predictive biological AI / ML | **BASELINE ADA; GENERALISASI BELUM** | Stage 8.2 LOGO-CV direproduksi (pooled ROC 0,5368/0,5062); Stage 9.5 XGB pooled ROC 0,7476 tetapi within-protein 0,6877 dan bukan perbandingan apple-to-apple (§19.4); median/IQR Stage 8.2 di `BENCHMARK_DATASET_LOCK.md` |
+| Predictive biological AI / ML | **BASELINE ADA; GENERALISASI BELUM** | Stage 8.2 LOGO-CV direproduksi (pooled ROC 0,5368/0,5062); Stage 10.1 XGB pooled ROC 0,7676 / RF 0,7568, within-protein 0,7156/0,7059, tetapi masih evaluasi internal dan bukan perbandingan apple-to-apple (§19.4, §20.6); median/IQR Stage 8.2 di `BENCHMARK_DATASET_LOCK.md` |
 | Label biologis (y) | **ADA — A+B** | `target_y` = UniProt Active site + Binding site; 46 positif (Stage 7), 129 (Stage 9.2/9.3), 959 (Stage 9.4), 955 (Stage 9.5); audit label 0 mismatch di kelima dataset |
 | Ekspansi dataset (Stage 9.2) | **AUDITED — REAL AFDB, DENGAN CATATAN** | 14 protein / 3.960 residu; fitur struktural & label cocok dengan sumber; 2 definisi fitur menyimpang dari Stage 8.2 (§16) |
 | Realignment dataset (Stage 9.3) | **AUDITED — DEFINISI FROZEN** | 14 protein / 3.960 residu; H = `basic`; `pae_local_mean_k10` = `\|i-j\| ≤ 10, j ≠ i`; 0 mismatch fitur/label; median/pooled/gain reproduce, IQR PR tidak (§17) |
 | Production scaling (Stage 9.4) | **AUDITED — 103 PROTEIN, DENGAN CATATAN** | 59.188 × 12; 103 protein; 959 positif (1,62%); 79 fold evaluable; XGB exact (median ROC 0,7359; pooled 0,7575 / 0,0606 / 3,74×); RF pooled ROC 0,7471 cocok tetapi median ROC/pooled PR tidak; P11532 isoform mismatch (§18) |
 | Cleansed production dataset (Stage 9.5) | **AUDITED — 102 PROTEIN, BERSIH** | 55.503 × 12; 102 protein; 955 positif (1,72%); 0 sel kosong/unmodeled; 78 fold evaluable; XGB median ROC 0,7371, pooled 0,7476 / 0,0640 / 3,72×; RF median 0,7330, pooled 0,7476 / 0,0608 / 3,53×; P11532 dikeluarkan (§19) |
+| Spatial feature dataset (Stage 10.1) | **AUDITED — 55.503 × 15, 0 NaN** | 3 fitur radius 8,0 Å; 102 protein; 955 positif; 78 fold evaluable; XGB median ROC 0,7786, pooled 0,7676 / 0,0759 / 4,41×; RF median 0,7724, pooled 0,7568 / 0,0668 / 3,88×; within-protein 0,7156/0,7059; 166.509 nilai baru diverifikasi ulang, 0 mismatch (§20) |
 | Klaim ilmiah/biologis | **TIDAK ADA (sengaja)** | Semua laporan menyatakan fitur = prediksi model; baseline bukan klaim fungsi |
 
 Ringkas: **A/B/C tercapai; D ada sebagai baseline terverifikasi tetapi belum
@@ -317,6 +346,7 @@ menunjukkan generalisasi; E/F/G tetap belum dan diakui eksplisit** (lihat bagian
 | 9.3 — Realigned real-AFDB | AUDITED (2026-10-20) | 3.960 × 12; 14 protein; 129 positif (3,26%); 13 fitur frozen; XGB median ROC 0,7264 / PR 0,1684, RF 0,7518 / 0,1763; pooled XGB 0,6411 / 0,0858, RF 0,6575 / 0,0912; SHA256 `6f0357…7f5a` | `results/dataset/stage93_realigned_dataset.csv`, §17 | Definisi fitur Stage 3/8.2 dipulihkan; fitur & label 0 mismatch; median/pooled/gain reproduce; **IQR PR dilaporkan tidak reproduce**; tetap **bukan pengganti benchmark Stage 8.2** |
 | 9.4 — Full production scaling | AUDITED (2026-10-20) | 59.188 × 12; 103 protein; 959 positif (1,62%); 79 fold evaluable; XGB median ROC 0,7359, pooled 0,7575 / 0,0606 (3,74×); RF median ROC 0,7339, pooled 0,7471 / 0,0573; SHA256 `8be323f6…bde1` | `results/dataset/production_dataset_100_realigned.csv`, §18 | Dataset produksi nyata teraudit; XGB exact; RF hanya pooled ROC yang exact; **P11532 isoform mismatch**; kenaikan pooled ROC **bukan** bukti generalisasi |
 | 9.5 — Dataset cleansing & isoform resolution | AUDITED (2026-10-20) | 55.503 × 12; 102 protein; 955 positif (1,72%); P11532 dikeluarkan; 0 sel kosong/unmodeled; 78 fold evaluable; XGB median ROC 0,7371, pooled 0,7476 / 0,0640 (3,72×); RF median ROC 0,7330, pooled 0,7476 / 0,0608 (3,53×); SHA256 `e47b3635…05a3` | `results/dataset/production_dataset_100_cleaned.csv`, §19 | Dataset produksi bersih; pooled ROC XGB turun karena artefak P11532 hilang; within-protein tetap ~0,689; **bukan** bukti generalisasi |
+| 10.1 — Spatial neighborhood features | AUDITED (2026-10-20) | 55.503 × 15; 102 protein; 955 positif; 3 fitur radius 8,0 Å; 0 NaN; 78 fold evaluable; XGB median ROC 0,7786, pooled 0,7676 / 0,0759 (4,41×); RF median ROC 0,7724, pooled 0,7568 / 0,0668 (3,88×); within-protein 0,7156/0,7059; SHA256 `8e215340…3319` | `results/dataset/production_dataset_100_spatial.csv`, §20 | Fitur spasial menaikkan metrik internal termasuk within-protein; tetap **bukan** validasi eksternal dan **bukan** bukti generalisasi |
 
 **Batas tegas antar baris:** sampai Stage 6, semua capaian bersifat
 **engineering + integritas data + ekstraksi fitur**. Stage 7 menambahkan **benchmark
@@ -325,9 +355,10 @@ direproduksi**. Stage 9.2 menambahkan **ekspansi dataset nyata yang diaudit**; S
 merekonstruksinya dengan **definisi fitur frozen**; Stage 9.4 memperbesar skala ke
 **103 protein / 59.188 residu** dan mereproduksi XGBoost persis; Stage 9.5 mengeluarkan
 P11532 dan menghasilkan dataset **102 protein / 55.503 residu** yang lengkap tanpa sel
-kosong. Tidak satu pun dari Stage 9.2–9.5 menjadi benchmark terkunci atau mengubah status
-generalisasi. Tidak ada satu pun baris di tabel ini yang merupakan klaim biologis atau
-bukti generalisasi.
+kosong; Stage 10.1 menambahkan tiga fitur lingkungan spasial radius 8,0 Å dan
+mengevaluasi ulang LOGO-CV. Tidak satu pun dari Stage 9.2–10.1 menjadi benchmark terkunci
+atau mengubah status generalisasi. Tidak ada satu pun baris di tabel ini yang merupakan
+klaim biologis atau bukti generalisasi.
 
 ---
 
@@ -356,6 +387,7 @@ bukti generalisasi.
 | `results/dataset/` | **`stage93_realigned_dataset.csv`** — realignment Stage 9.3 teraudit (**3.960 × 12**, 14 protein, 129 positif), SHA256 `6f035785…7f5a` | 319.050 B |
 | `results/dataset/` | **`production_dataset_100_realigned.csv`** — Stage 9.4 production dataset teraudit (**59.188 × 12**, 103 protein, 959 positif), SHA256 `8be323f6…bde1`, LF | 4.619.447 B |
 | `results/dataset/` | **`production_dataset_100_cleaned.csv`** — Stage 9.5 cleaned dataset, P11532 dikeluarkan (**55.503 × 12**, 102 protein, 955 positif), SHA256 `e47b3635…05a3`, LF | 4.457.124 B |
+| `results/dataset/` | **`production_dataset_100_spatial.csv`** — Stage 10.1 cleaned dataset + 3 fitur spasial radius 8,0 Å (**55.503 × 15**, 102 protein, 955 positif), 0 NaN, SHA256 `8e215340…3319`, LF | 5.313.161 B |
 | `docs/` | **`BENCHMARK_DATASET_LOCK.md`** — kontrak benchmark: skema, label A+B, fold map, protokol & metrik Stage 8.2, kebijakan freeze | — |
 | `results/` | `01_first_protein_analysis.executed.ipynb`, `notebook_plot_1.png` | output notebook |
 | `notebooks/` | `01_first_protein_analysis.ipynb` | materi pembelajaran |
@@ -367,8 +399,12 @@ Untuk Stage 9.4, audit mengunduh ulang **206 file CIF/PAE (103 protein, ~175 MB)
 `download/stage9_uniprot_metadata.csv` (15 protein, 4.124 baris) tetap tidak
 di-commit. Stage 9.5 **tidak mengunduh ulang apa pun**: dataset bersih adalah filter
 baris P11532 dari CSV Stage 9.4 yang telah diaudit, sehingga provenance AFDB/UniProt
-tetap berlaku untuk seluruh 55.503 baris yang tersisa. Audit independen Stage 9.2–9.4
-dibahas di §16–§18; verifikasi Stage 9.5 di §19.
+tetap berlaku untuk seluruh 55.503 baris yang tersisa. Stage 10.1 juga **tidak mengunduh
+ulang**: `download/` hanya berisi CSV/Markdown/notebook, **tanpa file PDB/CIF/PAE**.
+Ekstraksi memakai cache audit Stage 9.4 di luar tracked tree
+(`stage94_audit/data/afdb_files`, 102 CIF + 102 PAE) dan `afdb_api` (102 JSON); seluruh
+baris dicocokkan ulang dengan dataset sebelum fitur ditulis (§20.3). Audit independen
+Stage 9.2–9.4 dibahas di §16–§18; verifikasi Stage 9.5 di §19; Stage 10.1 di §20.
 
 ### 10.3 Script
 
@@ -385,9 +421,10 @@ dibahas di §16–§18; verifikasi Stage 9.5 di §19.
 | `src/extract_multi_protein_features.py` | Ekstraksi fitur multi-protein (Stage 6) |
 | `src/test_multi_protein_features.py` | Test Stage 6 — 24 check |
 
-**Tidak ada script ML di `src/`.** Baseline Stage 8.2 dijalankan dengan harness
-verifikasi eksternal (temporary, di luar repo); belum ada training script yang
-di-commit. Tidak ada PyTorch/TensorFlow/CUDA.
+**Tidak ada script ML di `src/`.** Baseline Stage 8.2, evaluasi Stage 9.x, dan ekstraksi
+fitur spasial Stage 10.1 dijalankan dengan harness verifikasi eksternal (temporary, di
+luar repo); belum ada training/extractor script yang di-commit. Tidak ada
+PyTorch/TensorFlow/CUDA.
 Environment: `.venv` Python **3.12.10**; `requirements.txt` hanya biopython, pandas,
 numpy, matplotlib, ipykernel, nbclient. Verifikasi Stage 8.2 memakai scikit-learn
 1.9.1, xgboost 3.4.1, scipy 1.18.1, dan numpy 2.5.4 yang dipasang sementara di luar
@@ -410,6 +447,9 @@ yang tercatat di report/manifest:
 
 # Cleaned Stage 9.5 (dihitung ulang 2026-10-20; P11532 dikeluarkan)
 e47b3635a7e904107094afde02a1ece656e25491c8721865501b6a76562b05a3  results/dataset/production_dataset_100_cleaned.csv
+
+# Spatial Stage 10.1 (dihitung ulang 2026-10-20; radius 8,0 A)
+8e21534055132c8cf4eb823e1abda224a15776b437b94bbc851f1ea4a99a3319  results/dataset/production_dataset_100_spatial.csv
 
 # Output Stage 6 (cocok dengan docs/TAHAP_6_MULTI_PROTEIN_FEATURE_REPORT.md §6)
 390462a42d8befe5588b1019d51b4c4282433b0f712c4377e5191883983d3c1d  multi_protein_residue_features.csv
@@ -468,6 +508,15 @@ Klaim yang **didukung bukti** di project ini:
    yang lebih baik. Dataset Stage 9.5 lengkap secara struktural (0 sel kosong) dan lebih
    valid sebagai titik awal analisis berikutnya, tetapi tetap bukan bukti generalisasi
    (§19).
+9. **Stage 10.1 menunjukkan fitur lingkungan spasial menambah sinyal internal.** Dengan
+   tiga fitur radius 8,0 Å, XGBoost median ROC naik 0,7371 → 0,7786 dan pooled ROC
+   0,7476 → 0,7676; RF median ROC 0,7330 → 0,7724 dan pooled ROC 0,7476 → 0,7568.
+   Kenaikan juga terjadi pada within-protein z-scored ROC (XGB 0,6877 → 0,7156; RF
+   0,6891 → 0,7059) dan pada 49/78 (XGB) serta 54/78 (RF) fold evaluable. Ini bukti
+   bahwa informasi geometri lokal tidak sepenuhnya terkandung dalam fitur 1D/PAE
+   sebelumnya. Namun dataset, protein, dan label sama dengan Stage 9.5; tidak ada
+   protein baru atau holdout eksternal, sehingga hasil ini tetap **bukan** bukti
+   generalisasi biologis (§20.6).
 
 **Tidak ada** kesimpulan biologis atau fungsional yang ditarik dari data ini, dan itu
 memang keputusan desain project — lihat bagian 12.
@@ -492,12 +541,14 @@ struktur 3D di dalam sel.
 1098 × 29 kolom dihasilkan dengan 24/24 test PASS dan rekalkulasi independen
 terhadap matriks PAE mentah.
 
-**D. Predictive biological AI sudah diuji sebagai baseline, tetapi belum terbukti
-bergeneralisasi.**
+**D. Predictive biological AI sudah diuji sebagai baseline dan dengan fitur spasial,
+tetapi belum terbukti bergeneralisasi.**
 Stage 8.2 LOGO-CV sudah dijalankan dan direproduksi (median/IQR dan pooled di
-`BENCHMARK_DATASET_LOCK.md`). Namun pooled ROC-AUC mendekati acak (0,5368 XGB / 0,5062
-RF), variasi antar-fold sangat besar, dan tidak ada validasi eksternal. Yang terbukti
-adalah **reproducibility protokol dan angka baseline**, bukan predictive power biologis.
+`BENCHMARK_DATASET_LOCK.md`). Stage 10.1 menambahkan tiga fitur spasial dan menaikkan
+metrik internal (XGB pooled ROC 0,7676, within-protein 0,7156; RF 0,7568 / 0,7059),
+tetapi kenaikan itu diukur pada 102 protein yang sama, tanpa holdout eksternal. Yang
+terbukti adalah **reproducibility protokol, angka baseline, dan tambahan sinyal dari
+fitur geometri lokal**, bukan predictive power biologis umum.
 
 **E. Tidak ada klaim bahwa fitur saat ini sudah punya predictive power biologis —
 TIDAK DIKLAIM.**
@@ -516,17 +567,21 @@ independen; (3) komposisi protein belum diseleksi sebagai holdout eksternal dan 
 tentu mewakili protein membran, kompleks, atau daerah tak terstruktur; (4) semua fitur
 dan label masih berasal dari prediksi/annotation, bukan validasi eksperimen. P11532
 sudah dikeluarkan di Stage 9.5 sehingga masalah isoform tidak lagi mencemari dataset
-bersih, tetapi itu tidak menambah bukti generalisasi. Menghitung "N = 55.503" sebagai
-ukuran sampel statistik adalah keliru. Status 2026-10-20: benchmark Stage 8.2 tetap
-terkunci, dan Stage 9.5 belum mengubah status generalisasi.
+bersih, tetapi itu tidak menambah bukti generalisasi. Stage 10.1 menambah tiga fitur
+turunan struktur pada **102 protein yang sama**; fitur-fitur itu berkorelasi dengan
+pLDDT/PAE yang sudah ada (mis. `spatial_plddt_mean_8a` vs `plddt_ca` ρ = 0,9885) dan
+tidak menambah protein atau sampel independen. Menghitung "N = 55.503" sebagai ukuran
+sampel statistik adalah keliru. Status 2026-10-20: benchmark Stage 8.2 tetap terkunci,
+dan Stage 10.1 belum mengubah status generalisasi.
 
 **G. Stage 7 (label A+B) SELESAI; ekspansi protein SELESAI sampai 102 protein;
-pertanyaan biologis lanjutan BELUM.**
+feature engineering spasial Stage 10.1 SELESAI; pertanyaan biologis lanjutan BELUM.**
 Stage 7 menetapkan label biner **Active site + Binding site** dan fold LOGO, lalu
 Stage 8.2 menetapkan baseline. Ekspansi 14 → 103 → 102 protein sudah dikerjakan di
-Stage 9.2–9.5, tetapi pertanyaan yang lebih luas (GO terms, EC numbers, multi-label)
-dan validasi eksternal **belum** dikerjakan. 102 protein masih terlalu sedikit dan
-terkorelasi untuk klasifikasi umum; `DATASET_PLAN.md` §9 masih berupa usulan arah.
+Stage 9.2–9.5, dan Stage 10.1 menambahkan fitur lingkungan 3D pada dataset 102 protein
+yang sama. Pertanyaan yang lebih luas (GO terms, EC numbers, multi-label) dan validasi
+eksternal **belum** dikerjakan. 102 protein masih terlalu sedikit dan terkorelasi untuk
+klasifikasi umum; `DATASET_PLAN.md` §9 masih berupa usulan arah.
 
 Tambahan yang juga **belum** terbukti/dilakukan:
 - Tidak ada validasi terhadap struktur eksperimen (PDB) — tidak ada RMSD, tidak ada
@@ -546,7 +601,7 @@ Diurutkan dari yang paling berdampak pada tahap berikutnya.
 |---|---|---|---|---|
 | C1 | **Skema Stage 6 = 26 fitur, bukan 28.** `contact_prob_sum` & `n_high_conf_contacts` dikeluarkan karena `contact_probs` tidak tersedia di AFDB | Tinggi (mempengaruhi desain fitur ML) | Stage 6 report §5, §10.1 | **SELESAI untuk benchmark:** Stage 7 menetapkan 27 kolom (25 shared + label + fold); Stage 8.2 memakai 13 fitur. Eksperimen fitur lain tetap terbuka |
 | C2 | **Redundansi pLDDT AFDB.** CIF AFDB menulis pLDDT per-residu ke semua atom → di 1098 baris: `plddt_atom_std = 0`, `plddt_atom_mean = min = max = plddt_ca`. 4 kolom `plddt_atom_*` redundan dengan `plddt_ca` | Tinggi (risiko multikolinearitas sempurna bila dipakai ML apa adanya) | Stage 6 report §10.2 | **SELESAI:** 4 kolom `plddt_atom_*` dibuang dari dataset benchmark dan tidak dipakai Stage 8.2 |
-| C3 | **Skala dataset tidak memadai untuk ML.** Benchmark 7 protein / 1098 residu berkorelasi; Stage 9.5 (dataset bersih) berisi 102 protein / 55.503 residu tetapi hanya 955 positif | Tinggi | Stage 4 plan §6, Stage 6 report, §19 | **TETAP:** diakui eksplisit (butir F); benchmark dikunci dan Stage 9.5 belum menjadi validasi eksternal |
+| C3 | **Skala dataset tidak memadai untuk ML.** Benchmark 7 protein / 1098 residu berkorelasi; Stage 9.5/10.1 berisi 102 protein / 55.503 residu tetapi hanya 955 positif; Stage 10.1 tidak menambah protein | Tinggi | Stage 4 plan §6, Stage 6 report, §19, §20 | **TETAP:** diakui eksplisit (butir F); benchmark dikunci dan Stage 10.1 belum menjadi validasi eksternal |
 | C4 | **Belum ada label (y).** Tidak ada target prediksi yang dipilih | Tinggi (blocker untuk ML) | `DATASET_PLAN.md` §9 | **SELESAI:** label A+B (Active site + Binding site), 46 positif, audit 7/7 protein |
 | C5 | **Koordinat mentah tidak invariant rotasi/translasi** (`ca_x/y/z`, `centroid_*`) | Sedang | Stage 3 JSON, `DATASET_PLAN.md` §8 | **DIHINDARI di benchmark:** koordinat tidak dipakai Stage 8.2; tetap ada di CSV beku sebagai dokumentasi |
 | C6 | **Versi AFDB v6 dapat berubah** di masa depan | Sedang (eksternal) | Stage 5 report §14.2 | SHA256 tercatat sebagai titik referensi; perubahan server akan terdeteksi sebagai hash berbeda |
@@ -566,8 +621,10 @@ Diurutkan dari yang paling berdampak pada tahap berikutnya.
 | C20 | **IQR PR Stage 9.3 tidak reproduce.** Ringkasan menyebut XGB 0,1348 dan RF 0,2259; perhitungan ulang dari per-fold PR (semua metode kuantil yang diuji) menghasilkan 0,1796 dan 0,2461. Median, pooled, dan gain cocok | Sedang (dokumentasi metrik) | Audit Stage 9.3 §17.4 | **TERCATAT:** docs memakai nilai reproduced; nilai klaim dicantumkan sebagai pembanding |
 | C21 | **P11532 memakai isoform AFDB yang tidak selaras.** `/api/prediction/P11532` mengembalikan 14 entri isoform, tanpa entri kanonik 3.685 aa; dataset memakai entri pertama `AF-P11532-9-F1` (525 aa). Sekuens CIF berbeda pada **496/525 posisi** dari sekuens kanonik, sehingga 525 baris struktural tidak selaras; 3.160 baris lainnya kosong dan 4 positifnya tidak punya fitur struktural | Tinggi (validitas data) | Audit Stage 9.4 §18.3 | **SELESAI di Stage 9.5:** seluruh 3.685 baris P11532 dikeluarkan; dataset bersih 102 protein / 55.503 baris / 955 positif, 0 sel kosong (§19) |
 | C22 | **Metrik RF Stage 9.4 hanya sebagian reproduce.** Pooled ROC 0,7471 cocok persis, tetapi median ROC klaim 0,7397 vs reproduced 0,7339; pooled PR klaim 0,0592 vs 0,0573; gain klaim 3,65× vs 3,53×. Konfigurasi alternatif yang diuji tidak menghasilkan 0,7397 persis | Sedang (dokumentasi metrik) | Audit Stage 9.4 §18.4 | **TERCATAT:** docs memakai nilai reproduced dan mencantumkan nilai klaim sebagai pembanding |
-| C23 | **Pooled ROC Stage 9.4 tidak sebanding dan dapat terinflasi.** 0,7575 vs Stage 8.2 0,5368 berasal dari dataset, prevalensi, dan jumlah fold berbeda; pooled ROC dipengaruhi urutan skor antar-protein. Within-protein z-scored ROC 0,6876; between-protein AUC 0,7922; median per-protein hanya naik +0,0174 dari Stage 8.2. Setelah P11532 dikeluarkan, Stage 9.5 pooled ROC 0,7476 dengan within-protein 0,6877 dan between-protein AUC 0,7851 — inflasi antar-protein tetap ada | Tinggi (interpretasi) | Audit Stage 9.4 §18.5, Stage 9.5 §19.4 | **TERCATAT:** kenaikan pooled dicatat sebagai angka, tetapi **tidak** diklaim sebagai bukti generalisasi; Stage 9.5 tetap memakai metrik within-protein sebagai pembanding |
+| C23 | **Pooled ROC Stage 9.4 tidak sebanding dan dapat terinflasi.** 0,7575 vs Stage 8.2 0,5368 berasal dari dataset, prevalensi, dan jumlah fold berbeda; pooled ROC dipengaruhi urutan skor antar-protein. Within-protein z-scored ROC 0,6876; between-protein AUC 0,7922; median per-protein hanya naik +0,0174 dari Stage 8.2. Setelah P11532 dikeluarkan, Stage 9.5 pooled ROC 0,7476 dengan within-protein 0,6877 dan between-protein AUC 0,7851. Stage 10.1 menaikkan pooled ROC ke 0,7676 (XGB) / 0,7568 (RF), tetapi within-protein baru 0,7156/0,7059 dan between-protein AUC 0,7785/0,7824 — inflasi antar-protein tetap ada | Tinggi (interpretasi) | Audit Stage 9.4 §18.5, Stage 9.5 §19.4, Stage 10.1 §20.6 | **TERCATAT:** kenaikan pooled dicatat sebagai angka, tetapi **tidak** diklaim sebagai bukti generalisasi; metrik within-protein tetap dilaporkan sebagai pembanding |
 | C24 | **Pembersihan P11532 mengubah metrik pooled.** Stage 9.4 pooled ROC XGB 0,7575 → Stage 9.5 0,7476 (−0,0099) setelah P11532 dikeluarkan dan model di-retrain; pooled PR naik 0,0606 → 0,0640, median ROC naik 0,7359 → 0,7371. Random Forest pooled ROC 0,7471 → 0,7476, pooled PR 0,0573 → 0,0608, median ROC 0,7339 → 0,7330. | Sedang (interpretasi) | Audit Stage 9.5 §19.3–§19.4 | **TERCATAT:** metrik dataset bersih dilaporkan terpisah; Stage 9.4 tetap menjadi artefak historis, bukan angka resmi dataset bersih |
+| C25 | **Fitur spasial tidak independen dari fitur yang sudah ada.** `spatial_plddt_mean_8a` berkorelasi sangat tinggi dengan `plddt_ca` (Pearson 0,9885; Spearman 0,9838); `spatial_pae_mean_8a` berkorelasi peringkat dengan `pae_local_mean_k10` (Spearman 0,8800); `spatial_density_8a` berkorelasi sedang dengan pLDDT (Pearson 0,6568). Radius 8,0 Å dipilih tetap, tanpa uji sensitivitas radius. Fitur dihitung dari struktur prediksi AFDB, bukan struktur eksperimen. | Sedang (interpretasi fitur) | Audit Stage 10.1 §20.2–§20.4 | **TERCATAT:** ketiga fitur dilaporkan sebagai turunan struktur; importance dan korelasi didokumentasikan; tidak diklaim sebagai informasi biologis independen. Uji sensitivitas radius dan struktur eksperimen belum dilakukan |
+| C26 | **`download/` tidak berisi file PDB/CIF/PAE.** Permintaan Stage 10.1 mengasumsikan file struktur ada di `download/`, tetapi folder itu hanya berisi CSV/Markdown/notebook. Ekstraksi memakai cache audit Stage 9.4 di luar tracked tree (102 CIF + 102 PAE + 102 API JSON); tidak ada unduhan baru. | Rendah–sedang (provenance) | Audit Stage 10.1 §20.3, D12 | **TERCATAT:** seluruh 55.503 baris dicocokkan ulang dengan CIF/PAE sebelum fitur ditulis; hash input per protein dicatat di audit JSON temporer. Cache mentah tidak di-commit |
 
 ---
 
@@ -590,6 +647,8 @@ Diurutkan dari yang paling berdampak pada tahap berikutnya.
 | Reproducibility Stage 9.4 (RF) | **SEBAGIAN** | Pooled ROC 0,7471 cocok persis; median ROC 0,7339 vs klaim 0,7397; pooled PR 0,0573 vs klaim 0,0592; gain 3,53× vs klaim 3,65× (C22) |
 | Reproducibility Stage 9.5 (XGB) | **DIHITUNG LANGSUNG DARI CSV BERSIH** | 102 fold / 78 evaluable; median ROC 0,7371, PR 0,0673; pooled ROC 0,7476, PR 0,0640, gain 3,7174×; 55.503 baris; environment sama |
 | Reproducibility Stage 9.5 (RF) | **DIHITUNG LANGSUNG DARI CSV BERSIH** | 102 fold / 78 evaluable; median ROC 0,7330, PR 0,0731; pooled ROC 0,7476, PR 0,0608, gain 3,5331×; konfigurasi default yang sama |
+| Reproducibility Stage 10.1 (XGB) | **DIHITUNG LANGSUNG DARI CSV SPASIAL** | 102 fold / 78 evaluable; 16 fitur; median ROC 0,7786, PR 0,0925; pooled ROC 0,7676, PR 0,0759, gain 4,4089×; 55.503 baris; environment sama |
+| Reproducibility Stage 10.1 (RF) | **DIHITUNG LANGSUNG DARI CSV SPASIAL** | 102 fold / 78 evaluable; 16 fitur; median ROC 0,7724, PR 0,0894; pooled ROC 0,7568, PR 0,0668, gain 3,8824×; konfigurasi default yang sama |
 
 Catatan: satu-satunya artefak non-deterministik yang diketahui adalah
 `data/alphafold_db/metadata/download_log.txt` (timestamp + path absolut lokal) — file
@@ -599,7 +658,7 @@ log, bukan output dataset, dan tidak dipakai sebagai input analisis.
 
 ## 15. Current Project Position
 
-**Posisi: Stage 9.5 dieksekusi dan diaudit — dataset produksi bersih 102 protein /
+**Posisi: Stage 10.1 dieksekusi dan diaudit — dataset spasial 102 protein /
 55.503 residu tersedia; benchmark Stage 8.2 tetap terkunci dan tidak berubah.**
 
 - Stage 1–6 selesai dan terdokumentasi; concern C1, C2, C4, dan C5 sudah ditutup
@@ -617,17 +676,21 @@ log, bukan output dataset, dan tidak dipakai sebagai input analisis.
   isoform AFDB tidak selaras; dataset bersih **55.503 × 12**, 102 protein, 955
   positif (1,7206%), **0 sel kosong/unmodeled**, 24 protein zero-positive, 78 fold
   evaluable. Tidak ada baris lain yang perlu dibersihkan.
-- **Metrik Stage 9.5 (retraining penuh):** XGB median ROC 0,7371 / PR 0,0673,
-  pooled ROC 0,7476 / PR 0,0640 / gain 3,72×; RF median ROC 0,7330 / PR 0,0731,
-  pooled ROC 0,7476 / PR 0,0608 / gain 3,53×.
-- **Dampak pembersihan:** pooled ROC XGB turun 0,7575 → 0,7476 (−0,0099) karena
-  baris P11532 memang menginflasi pooled ROC; pooled PR naik 0,0606 → 0,0640;
-  median ROC +0,0012 dan median PR +0,0017. Within-protein z-scored ROC tetap
-  0,6877 (XGB) / 0,6891 (RF), jauh di bawah pooled — inflasi antar-protein tetap
-  ada (C23, C24, §19.4).
+- **Stage 10.1 menyelesaikan feature engineering spasial:** tiga fitur radius 8,0 Å
+  (`spatial_density_8a`, `spatial_plddt_mean_8a`, `spatial_pae_mean_8a`) ditambahkan;
+  dataset **55.503 × 15**, **0 NaN**, LF murni, SHA256 `8e215340…3319`; seluruh
+  166.509 nilai baru diverifikasi ulang dengan parser independen (0 mismatch).
+- **Metrik Stage 10.1 (retraining penuh):** XGB median ROC 0,7786 / PR 0,0925,
+  pooled ROC 0,7676 / PR 0,0759 / gain 4,41×; RF median ROC 0,7724 / PR 0,0894,
+  pooled ROC 0,7568 / PR 0,0668 / gain 3,88×.
+- **Dampak fitur spasial:** vs Stage 9.5, XGB median ROC +0,0415 / PR +0,0252,
+  pooled ROC +0,0200 / PR +0,0119; RF median ROC +0,0394 / PR +0,0162, pooled ROC
+  +0,0092 / PR +0,0060. Within-protein z-scored ROC naik 0,6877 → 0,7156 (XGB) dan
+  0,6891 → 0,7059 (RF), jadi kenaikan bukan hanya urutan antar-protein; namun
+  between-protein AUC tetap ~0,78 dan tidak ada holdout eksternal (C23, C25, §20.6).
 - Dataset AFDB, dataset Stage 7, dan lock Stage 8.2 **tidak diubah**; Stage 9.2,
-  9.3, 9.4, dan 9.5 adalah artefak baru.
-- Gate berikutnya: putuskan status benchmark Stage 9.3/9.4/9.5, lalu validasi
+  9.3, 9.4, 9.5, dan 10.1 adalah artefak baru.
+- Gate berikutnya: putuskan status benchmark Stage 9.3–10.1, lalu validasi
   eksternal dan kalibrasi lintas-protein. Belum ada klaim generalisasi.
 
 ---
@@ -1116,7 +1179,256 @@ perbandingan baris-per-baris terhadap sumber Stage 9.4, dan tabel metrik di §19
 
 ---
 
-## 20. Recommended Next Step — External Validation
+## 20. Stage 10.1 — Spatial Neighborhood Feature Engineering, 102 Protein (Audited 2026-10-20)
+
+**Status: AUDITED — 3 FITUR SPASIAL RADIUS 8,0 Å DITAMBAHKAN; DATASET 55.503 × 15;
+166.509 NILAI BARU DIVERIFIKASI ULANG; LOGO-CV 16 FITUR DIHITUNG; BUKAN VALIDASI
+EKSTERNAL DAN BUKAN BUKTI GENERALISASI.**
+
+### 20.1 Artifact identity
+
+| Field | Value |
+|---|---|
+| Authoritative path | `results/dataset/production_dataset_100_spatial.csv` |
+| Derived from | `results/dataset/production_dataset_100_cleaned.csv` (Stage 9.5) |
+| SHA256 | `8e21534055132c8cf4eb823e1abda224a15776b437b94bbc851f1ea4a99a3319` |
+| Size | 5.313.161 bytes |
+| Rows | 55.503 residue records (plus header) |
+| Columns | **15** — 12 kolom Stage 9.5 tanpa perubahan + 3 kolom spasial baru |
+| Proteins | 102 |
+| Positives (`target_y = 1`) | 955 (1,7206%) — identik dengan Stage 9.5 |
+| New columns | `spatial_density_8a`, `spatial_plddt_mean_8a`, `spatial_pae_mean_8a` |
+| Missing values in new columns | **0** (0 sel kosong/NaN pada ketiga kolom) |
+| `spatial_density_8a` | min 2, max 21, mean 8,8064; 0 residu tanpa tetangga |
+| Line endings | **LF** — 0 CRLF, 0 lone CR, 55.504 LF, final newline, tanpa BOM |
+
+### 20.2 Feature definitions (fixed for this stage)
+
+Untuk setiap protein dengan N residu dan koordinat Cα `CA_i`:
+
+```
+Neighbours(i) = { j != i : ||CA_i - CA_j||_2 <= 8.0 Å }     (self excluded)
+```
+
+| Feature | Definition |
+|---|---|
+| `spatial_density_8a` | `\|Neighbours(i)\|` — jumlah residu lain dalam radius 8,0 Å (integer) |
+| `spatial_plddt_mean_8a` | rata-rata `pLDDT_CA(j)` untuk `j ∈ Neighbours(i)`; dibulatkan 3 desimal |
+| `spatial_pae_mean_8a` | rata-rata `PAE[i, j]` untuk `j ∈ Neighbours(i)` — **baris i (directed)**, bukan simetris; dibulatkan 3 desimal |
+
+Catatan definisi:
+
+- Radius 8,0 Å diukur Euclidean antar-Cα, bukan jarak sekuens; tetangga bisa berasal
+  dari segmen/domain yang berjauhan dalam sekuens.
+- Diri sendiri selalu dikeluarkan dari `Neighbours(i)`, termasuk dari rata-rata pLDDT
+  dan PAE.
+- `spatial_pae_mean_8a` memakai `PAE[i, j]` (arah baris i → kolom j), konsisten dengan
+  `pae_mean_row`; tidak disimetriskan.
+- Tidak ada imputasi: seluruh 102 protein harus lolos verifikasi input sebelum fitur
+  ditulis; kegagalan satu protein membatalkan seluruh output.
+- Ketiga fitur ini **tidak** menggantikan `plddt_ca`, `pae_mean_row`, `pae_mean_col`,
+  atau `pae_local_mean_k10`; keduanya dipertahankan sehingga model menerima 13 fitur
+  frozen + 3 fitur spasial = **16 fitur**.
+
+### 20.3 Input provenance & verification
+
+**Provenance penting:** permintaan Stage 10.1 menyebut file PDB/PAE di `download/`,
+tetapi `download/` **tidak berisi file struktur** (hanya 6 CSV, 4 Markdown, dan 1
+notebook; lihat D12). Ekstraksi memakai cache audit Stage 9.4 di luar tracked tree:
+
+- `C:\Users\walet\AppData\Local\Temp\stage94_audit\data\afdb_files` — 102 CIF
+  `AF-{acc}-F1-model_v6.cif` + 102 PAE `AF-{acc}-F1-predicted_aligned_error_v6.json`.
+- `C:\Users\walet\AppData\Local\Temp\stage94_audit\data\afdb_api` — 102 respons API
+  AFDB untuk verifikasi sekuens kanonik dan checksum.
+- **Tidak ada unduhan baru** pada Stage 10.1; file yang dipakai adalah file yang sama
+  dengan audit Stage 9.4/9.5.
+
+Verifikasi yang dilakukan sebelum fitur dihitung (per protein):
+
+- Entri AFDB harus kanonik `AF-{acc}-F1` (bukan isoform), sekuens CSV harus identik
+  dengan `uniprotSequence`, dan MD5 sekuens harus sama dengan `sequenceChecksum`.
+- Satu model, satu chain, tanpa HETATM; penomoran residu 1..N; sekuens CIF identik
+  dengan sekuens CSV.
+- Shape PAE harus `(N, N)`.
+- Setiap baris harus cocok dengan CIF/PAE: `n_atoms`, `plddt_ca`, `pae_mean_row`,
+  `pae_mean_col`, dan `pae_local_mean_k10` (toleransi 1e-9). Tidak ada baris yang
+  diizinkan berbeda.
+
+Hasil: **102/102 protein lolos**, 55.503/55.503 baris cocok. Verifikasi independen
+kedua memakai parser CIF teks-biasa (tanpa Bio.PDB) dan loop tetangga naif
+per-residu:
+
+- 102/102 protein, 55.503 baris, 15 kolom, header persis.
+- Seluruh **166.509 nilai baru** (55.503 × 3) direproduksi dengan **0 mismatch**;
+  selisih maksimum `plddt_ca` = 0, `spatial_plddt_mean_8a` = 0,
+  `spatial_pae_mean_8a` = 0.
+- Kolom lama dibandingkan string-per-string dengan CSV Stage 9.5: identik, urutan baris
+  sama.
+
+### 20.4 Distribution & collinearity
+
+| Statistic | `spatial_density_8a` | `spatial_plddt_mean_8a` | `spatial_pae_mean_8a` |
+|---|---:|---:|---:|
+| Min | 2 | 21,890 | 1,000 |
+| Q25 | 6 | — | — |
+| Median | 9 | — | — |
+| Q75 | 11 | — | — |
+| Max | 21 | 98,973 | 21,714 |
+| Mean | 8,8064 | 81,771 | 1,806 |
+
+Korelasi tingkat baris (Pearson / Spearman):
+
+| Pair | Pearson | Spearman |
+|---|---:|---:|
+| `spatial_plddt_mean_8a` vs `plddt_ca` | 0,9885 | 0,9838 |
+| `spatial_pae_mean_8a` vs `pae_local_mean_k10` | 0,6451 | 0,8800 |
+| `spatial_plddt_mean_8a` vs `spatial_pae_mean_8a` | −0,5296 | −0,8537 |
+| `spatial_density_8a` vs `plddt_ca` | 0,6568 | 0,6006 |
+| `spatial_density_8a` vs `spatial_pae_mean_8a` | −0,2540 | −0,4308 |
+
+**Interpretasi kolinearitas:** `spatial_plddt_mean_8a` sangat berkorelasi dengan
+`plddt_ca` (0,9885), sehingga sebagian sinyalnya redundant; `spatial_pae_mean_8a`
+berkorelasi tinggi secara rank dengan `pae_local_mean_k10` (0,8800) tetapi hanya
+sedang secara linear (0,6451). Kontribusi unik fitur spasial harus dibaca dari
+perbandingan model dan importance, bukan dari korelasi ini saja (C25).
+
+### 20.5 Reproduction of Stage 10.1 metrics
+
+Protokol: 102-fold LOGO (78 evaluable), **16 fitur** (13 frozen + 3 spasial),
+konfigurasi XGBoost/RF identik Stage 8.2/9.2/9.3/9.4/9.5; model di-retrain penuh.
+Environment: numpy 2.5.4, pandas 3.0.6, scipy 1.18.1, scikit-learn 1.9.1,
+xgboost 3.4.1.
+
+| Model | Median ROC (IQR) | Median PR (IQR) | Median gain | Pooled ROC | Pooled PR (gain) |
+|---|---:|---:|---:|---:|---:|
+| XGBoost | **0,7786** (0,1987) | **0,0925** (0,1155) | **3,93×** | **0,7676** | **0,0759** (4,41×) |
+| Random Forest | **0,7724** (0,2138) | **0,0894** (0,1752) | **3,19×** | **0,7568** | **0,0668** (3,88×) |
+
+Nilai eksak: XGB median ROC 0,7786497337 / PR 0,0924593292; pooled ROC 0,7676193444 /
+PR 0,0758605902. RF median ROC 0,7723624097 / PR 0,0893675842; pooled ROC 0,7567553357
+/ PR 0,0668017447.
+
+Perbandingan langsung dengan Stage 9.5 (dataset dan folds yang sama, hanya fitur
+berbeda):
+
+| Metric | Stage 9.5 | Stage 10.1 | Δ |
+|---|---:|---:|---:|
+| XGB median ROC | 0,7371 | **0,7786** | **+0,0415** |
+| XGB median PR | 0,0673 | **0,0925** | **+0,0252** |
+| XGB IQR ROC | 0,2300 | 0,1987 | −0,0313 |
+| XGB IQR PR | 0,1070 | 0,1155 | +0,0085 |
+| XGB median gain | 2,28× | **3,93×** | **+1,65×** |
+| XGB pooled ROC | 0,7476 | **0,7676** | **+0,0200** |
+| XGB pooled PR | 0,0640 | **0,0759** | **+0,0119** |
+| XGB pooled gain | 3,72× | **4,41×** | **+0,69×** |
+| RF median ROC | 0,7330 | **0,7724** | **+0,0394** |
+| RF median PR | 0,0731 | **0,0894** | **+0,0162** |
+| RF IQR ROC | 0,2096 | 0,2138 | +0,0042 |
+| RF IQR PR | 0,1250 | 0,1752 | +0,0502 |
+| RF median gain | 2,70× | **3,19×** | **+0,49×** |
+| RF pooled ROC | 0,7476 | **0,7568** | **+0,0091** |
+| RF pooled PR | 0,0608 | **0,0668** | **+0,0060** |
+| RF pooled gain | 3,53× | **3,88×** | **+0,35×** |
+
+**Paired per-fold deltas (78 fold evaluable yang sama):**
+
+| Model | Median ΔROC | Fold naik/turun/seri | Median ΔPR | Fold naik/turun/seri |
+|---|---:|---:|---:|---:|
+| XGBoost | **+0,0194** (mean +0,0227) | 49 / 29 / 0 | **+0,0158** (mean +0,0337) | 57 / 21 / 0 |
+| Random Forest | **+0,0105** (mean +0,0141) | 54 / 24 / 0 | **+0,0072** (mean +0,0208) | 48 / 30 / 0 |
+
+Kuartil delta per fold: XGB ROC −0,0225 / +0,0194 / +0,0602; PR −0,0001 / +0,0158 /
++0,0533. RF ROC −0,0034 / +0,0105 / +0,0400; PR −0,0061 / +0,0072 / +0,0290. Jadi
+perbaikan bukan hanya dari beberapa fold ekstrem, tetapi distribusinya condong positif
+pada mayoritas fold.
+
+**Within-protein / between-protein diagnostics:**
+
+| Metric | XGB 9.5 | XGB 10.1 | RF 9.5 | RF 10.1 |
+|---|---:|---:|---:|---:|
+| Within-protein z-scored pooled ROC | 0,6877 | **0,7156** | 0,6891 | **0,7059** |
+| Within-protein rank-normalized pooled ROC | — | 0,7153 | — | 0,7109 |
+| Between-protein AUC | 0,7851 | 0,7785 | 0,7824 | 0,7824 |
+| Spearman mean score vs prevalence | 0,5142 | 0,5068 | 0,5105 | 0,5121 |
+| Pearson mean score vs prevalence | — | 0,4515 | — | 0,4435 |
+
+**Mean feature importance (10 teratas):**
+
+| Rank | XGBoost feature | Mean importance | Random Forest feature | Mean importance |
+|---:|---|---:|---|---:|
+| 1 | `pae_mean_row` | 0,1950 | `pae_mean_col` | 0,2581 |
+| 2 | `pae_mean_col` | 0,1822 | `pae_mean_row` | 0,1978 |
+| 3 | `aa_nonpolar` | 0,1262 | **`spatial_plddt_mean_8a`** | **0,1123** |
+| 4 | `hydropathy_kd` | 0,0894 | `plddt_ca` | 0,1037 |
+| 5 | `charge_ph7` | 0,0829 | `aa_nonpolar` | 0,0793 |
+| 6 | **`spatial_density_8a`** | **0,0798** | `hydropathy_kd` | 0,0708 |
+| 7 | `plddt_ca` | 0,0578 | **`spatial_density_8a`** | **0,0620** |
+| 8 | **`spatial_plddt_mean_8a`** | **0,0374** | `pae_local_mean_k10` | 0,0528 |
+| 9 | **`spatial_pae_mean_8a`** | **0,0309** | **`spatial_pae_mean_8a`** | **0,0211** |
+| 10 | `pae_local_mean_k10` | 0,0283 | `n_atoms` | 0,0164 |
+
+Total importance ketiga fitur spasial: **14,8%** (XGB) dan **19,5%** (RF). Pada RF,
+`spatial_plddt_mean_8a` menempati peringkat 3 dan `spatial_density_8a` peringkat 7.
+
+### 20.6 Interpretation — perbaikan within-protein, inflasi antar-protein tetap
+
+1. **Perbaikan konsisten pada kedua model dan kedua metrik utama.** Median ROC naik
+   +0,0415 (XGB) / +0,0394 (RF); median PR +0,0252 / +0,0162; pooled ROC +0,0200 /
+   +0,0091; pooled PR +0,0119 / +0,0060. Semua arah positif.
+2. **Kenaikan bukan hanya urutan antar-protein.** Within-protein z-scored ROC naik
+   0,6877 → 0,7156 (XGB, +0,0279) dan 0,6891 → 0,7059 (RF, +0,0168). Ini bukti
+   bahwa fitur spasial menambah sinyal untuk membedakan residu **di dalam** protein
+   yang sama, bukan sekadar memindahkan peringkat protein.
+3. **Mayoritas fold membaik.** 49/78 (XGB) dan 54/78 (RF) fold naik pada ROC;
+   57/78 dan 48/78 naik pada PR. Median delta positif pada keduanya.
+4. **Between-protein ordering tidak berubah banyak.** Between-protein AUC 0,7785
+   (XGB, turun tipis dari 0,7851) dan 0,7824 (RF, tetap); Spearman ~0,51. Pooled ROC
+   0,7676/0,7568 masih memuat komponen antar-protein dan **tidak boleh** dibaca sebagai
+   generalisasi per-protein.
+5. **Kolinearitas membatasi klaim kausal.** `spatial_plddt_mean_8a` sangat mirip
+   `plddt_ca` (r = 0,9885), sehingga sebagian kenaikan bisa berasal dari pengukuran
+   kualitas lokal yang lebih halus, bukan geometri baru. `spatial_pae_mean_8a`
+   berkorelasi rank tinggi dengan `pae_local_mean_k10` (0,8800). Yang paling unik
+   adalah `spatial_density_8a` (korelasi sedang dengan fitur lama).
+6. **Tidak ada validasi eksternal.** Seluruh 102 protein masih dipakai dalam LOGO-CV;
+   belum ada holdout protein yang tidak terlibat dalam pemilihan fitur. Tidak ada
+   kalibrasi probabilitas lintas-protein.
+7. **Biaya komputasi:** ekstraksi O(102 × N²) jarak Cα; untuk 102 protein / 55.503
+   residu selesai dalam hitungan detik–menit di CPU. Tidak ada perubahan dependensi.
+
+**Kesimpulan:** Stage 10.1 menunjukkan bahwa fitur lingkungan spasial radius 8,0 Å
+memberi perbaikan yang konsisten dan measurable pada diskriminasi per-residu, termasuk
+di dalam protein yang sama. Namun ini tetap **feature engineering pada dataset yang
+sama**, bukan validasi eksternal; klaim generalisasi tetap belum boleh dibuat.
+
+### 20.7 Status and interpretation
+
+- **What is proven:** identitas, dimensi (55.503 × 15), LF, dan 0 NaN dataset spasial;
+  definisi fitur yang eksplisit; seluruh 166.509 nilai baru direproduksi independen
+  dengan 0 mismatch; metrik LOGO-CV 16 fitur dihitung ulang dengan konfigurasi frozen;
+  perbaikan median/pooled dan within-protein vs Stage 9.5 terukur pada kedua model.
+- **What is not proven:** generalisasi ke protein baru; bahwa kenaikan berasal dari
+  geometri 3D murni dan bukan dari kolinearitas dengan pLDDT/PAE lama; radius 8,0 Å
+  adalah pilihan yang optimal (tidak ada sweep radius); kalibrasi probabilitas
+  lintas-protein; representativitas 102 protein.
+- **Bukan benchmark terkunci:** Stage 8.2 dan `BENCHMARK_DATASET_LOCK.md` tidak diubah.
+  Stage 10.1 adalah artefak baru; status benchmark-nya perlu keputusan terpisah.
+- **Belum di-commit:** dataset dan dokumentasi Stage 10.1 masih di working tree dan
+  menunggu persetujuan user.
+
+### 20.8 Audit provenance
+
+Ekstraktor `make_spatial.py`, verifier independen `verify_spatial.py`, harness
+`metrics101.py`, dan `diagnostics101.py` dijalankan di
+`C:\Users\walet\AppData\Local\Temp\stage101_audit` (di luar tracked tree) dengan
+`python -I`, path input/output sebagai argumen. Tidak ada perubahan pada `src/`,
+`requirements.txt`, atau dataset Stage 7/8.2/9.x. Bukti reproducible: SHA256 dataset,
+audit JSON per protein (SHA256 CIF/PAE/API + statistik fitur), dan tabel metrik §20.5.
+Audit JSON lengkap: `C:\Users\walet\AppData\Local\Temp\stage101_audit\spatial_extraction_audit.json`.
+
+---
+
+## 21. Recommended Next Step — External Validation
 
 **Rekomendasi: validasi eksternal dan kalibrasi lintas-protein, bukan klaim
 generalisasi.**
@@ -1137,24 +1449,34 @@ Fokus:
    untuk protein tanpa positif (24 protein di Stage 9.4; P01308 di Stage 9.2/9.3;
    GFP di Stage 8.2). Untuk Stage 9.3 dan 9.4, gunakan nilai reproduced, bukan nilai
    klaim yang tidak cocok (C20, C22).
-6. **Metrik tanpa P11532 sudah dihitung di Stage 9.5** (retraining penuh, bukan hanya
-   sensitivitas OOF): XGB pooled ROC 0,7476 / PR 0,0640, median ROC 0,7371; RF pooled
-   ROC 0,7476 / PR 0,0608, median ROC 0,7330. Gunakan angka Stage 9.5 untuk dataset
-   bersih, dan angka Stage 9.4 hanya sebagai pembanding historis (C24).
-7. **Putuskan status benchmark Stage 9.3, 9.4, dan 9.5** (lock terpisah atau tetap
-   sebagai artefak ekspansi) sebelum memakai metriknya sebagai pembanding resmi.
+6. **Metrik dataset bersih dan spasial sudah dihitung penuh.** Stage 9.5 (retraining
+   tanpa P11532): XGB pooled ROC 0,7476 / PR 0,0640, median ROC 0,7371; RF pooled ROC
+   0,7476 / PR 0,0608, median ROC 0,7330. Stage 10.1 (16 fitur): XGB pooled ROC
+   0,7676 / PR 0,0759, median ROC 0,7786; RF pooled ROC 0,7568 / PR 0,0668, median ROC
+   0,7724. Gunakan angka Stage 10.1 untuk model dengan fitur spasial, angka Stage 9.5
+   sebagai pembanding fitur, dan angka Stage 9.4 hanya sebagai pembanding historis
+   (C24).
+7. **Putuskan status benchmark Stage 9.3, 9.4, 9.5, dan 10.1** (lock terpisah atau
+   tetap sebagai artefak ekspansi) sebelum memakai metriknya sebagai pembanding resmi.
 8. **Jangan memakai pooled ROC sebagai bukti generalisasi.** Laporkan juga metrik
-   within-protein dan median per-protein; pooled ROC Stage 9.5 (0,7476) masih
-   dipengaruhi perbedaan antar-protein (within-protein 0,6877/0,6891; C23).
+   within-protein dan median per-protein; pooled ROC Stage 10.1 (0,7676/0,7568) masih
+   dipengaruhi perbedaan antar-protein, sedangkan within-protein z-scored ROC
+   0,7156/0,7059 masih di bawah pooled (C23, C25).
+9. **Jadikan fitur spasial kandidat tetap, bukan kesimpulan.** Stage 10.1 adalah
+   feature engineering pada dataset yang sama. Sebelum masuk benchmark baru, lakukan
+   ablasi/sweep radius, uji stabilitas importance, dan validasi pada protein yang tidak
+   dipakai memilih fitur (C25).
 
-**Gate Stage 9.5:** jangan klaim generalisasi sebelum ada validasi eksternal dan
-metrik yang direproduksi dari repo bersih.
+**Gate Stage 10.1:** jangan klaim generalisasi sebelum ada validasi eksternal dan
+metrik yang direproduksi dari repo bersih. Stage 10.1 belum melewati gate itu; ia hanya
+menambah fitur dan mengukur dampaknya pada LOGO-CV internal.
 
 ---
 
 ```
 NEXT GATE:
-STAGE 10 — EXTERNAL VALIDATION + CROSS-PROTEIN CALIBRATION
+STAGE 10.2+ — EXTERNAL VALIDATION + CROSS-PROTEIN CALIBRATION
+(Stage 10.1 = feature engineering, bukan external validation)
 ```
 
 ---
@@ -1178,3 +1500,4 @@ indikasi kerusakan data (semua checksum & test tetap konsisten).
 | D9 | **P11532 Stage 9.4 memakai isoform AFDB yang tidak selaras.** API mengembalikan 14 isoform, tanpa entri kanonik 3.685 aa; CSV memakai `AF-P11532-9-F1` (525 aa) yang berbeda pada 496/525 posisi dari sekuens kanonik. 3.160 baris lainnya kosong; 4 positifnya tidak punya fitur struktural. | `data/afdb_api/P11532.json`, CIF vs UniProt P11532, `results/dataset/production_dataset_100_realigned.csv`; §18.3 | **RESOLVED di Stage 9.5:** seluruh 3.685 baris P11532 dikeluarkan; dataset bersih 102 protein / 55.503 baris / 955 positif (§19) |
 | D10 | **Metrik RF Stage 9.4 tidak konsisten dengan data per-fold.** Klaim median ROC 0,7397 / pooled PR 0,0592 / gain 3,65×; reproduced dengan konfigurasi yang menghasilkan pooled ROC exact 0,7471: 0,7339 / 0,0573 / 3,53×. XGBoost exact. | `results/dataset/production_dataset_100_realigned.csv`; §18.4 | Sedang — docs memakai nilai reproduced; nilai klaim dicatat sebagai pembanding |
 | D11 | **Pembersihan P11532 mengubah metrik pooled vs Stage 9.4.** Setelah P11532 dikeluarkan dan model di-retrain: XGB pooled ROC 0,7575 → 0,7476, pooled PR 0,0606 → 0,0640, median ROC 0,7359 → 0,7371; RF pooled ROC 0,7471 → 0,7476, pooled PR 0,0573 → 0,0608, median ROC 0,7339 → 0,7330. | `results/dataset/production_dataset_100_cleaned.csv`; §19.3 | Rendah — bukan error; dampak pembersihan diukur dan didokumentasikan |
+| D12 | **`download/` tidak berisi file PDB/CIF/PAE untuk Stage 10.1.** Permintaan Stage 10.1 mengasumsikan file struktur ada di `download/`, tetapi folder itu hanya berisi 6 CSV, 4 Markdown, dan 1 notebook. Ekstraksi memakai cache audit Stage 9.4 di luar tracked tree (102 CIF + 102 PAE + 102 respons API AFDB); tidak ada unduhan baru. | Isi `download/`; `C:\Users\walet\AppData\Local\Temp\stage94_audit\data\`; §20.3 | Rendah — provenance jelas dan file yang dipakai adalah file audit Stage 9.4 yang sama; tetapi ekstraktor tidak dapat direproduksi hanya dari repo tanpa menyediakan file struktur |

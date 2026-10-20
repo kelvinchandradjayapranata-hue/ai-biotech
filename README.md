@@ -10,7 +10,7 @@
 
 <p align="center">
   <img alt="Python 3.12.10" src="https://img.shields.io/badge/Python-3.12.10-3776AB?logo=python&logoColor=white">
-  <img alt="Status: Stages 1–9.5 complete, Stage 8.2 benchmark locked" src="https://img.shields.io/badge/Status-Stages%201%E2%80%939.5%20complete%20%C2%B7%20Stage%208.2%20benchmark%20locked-brightgreen">
+  <img alt="Status: Stages 1–10.1 complete, Stage 8.2 benchmark locked" src="https://img.shields.io/badge/Status-Stages%201%E2%80%9310.1%20complete%20%C2%B7%20Stage%208.2%20benchmark%20locked-brightgreen">
   <img alt="Data source: AlphaFold Database v6" src="https://img.shields.io/badge/Data-AlphaFold%20Database%20v6-blue">
 </p>
 
@@ -42,8 +42,12 @@ definitions; neither expansion replaces the frozen Stage 8.2 benchmark. **Stage 
 audited dataset to **103 proteins / 59,188 residues**, with XGBoost LOGO-CV reproduced exactly.
 **Stage 9.5** excludes P11532 — whose AFDB entry is a non-canonical isoform — producing a fully
 complete **102-protein / 55,503-residue** dataset with no missing structural values and re-trained
-LOGO-CV metrics. These remain data-engineering milestones, not external validation, and the
-pooled ROC increase is not a like-for-like measure of generalization.
+LOGO-CV metrics. **Stage 10.1** adds three radius-8.0 Å spatial-neighborhood features
+(`spatial_density_8a`, `spatial_plddt_mean_8a`, `spatial_pae_mean_8a`) to that clean dataset,
+raising median per-protein ROC from 0.7371 to 0.7786 (XGBoost) and 0.7330 to 0.7724 (Random
+Forest), with a matching rise in within-protein z-scored ROC. These remain data-engineering and
+feature-engineering milestones, not external validation, and the pooled ROC increase is not a
+like-for-like measure of generalization.
 
 ## Research Objectives
 
@@ -64,14 +68,17 @@ row against fresh AFDB/UniProt downloads. Stage 9.4 scales the audited dataset t
 proteins / 59,188 residues, verifies all sequence features and labels against UniProt, and
 reproduces the XGBoost baseline exactly. Stage 9.5 removes the misaligned P11532 isoform,
 producing a complete 102-protein / 55,503-residue dataset with zero missing structural values
-and re-trained LOGO-CV metrics (see [Current Results](#current-results)).
+and re-trained LOGO-CV metrics. Stage 10.1 adds three spatial-neighborhood features computed from
+Cα coordinates at radius 8.0 Å, producing a 55,503 × 15 dataset; all 166,509 new values were
+reproduced independently, and LOGO-CV improves on both models, including within-protein metrics
+(see [Current Results](#current-results)).
 
 **Future goals.** The benchmark dataset and a baseline are now in place, and the Stage 9.2
-expansion, its Stage 9.3 realignment, the Stage 9.4 103-protein scaling, and the Stage 9.5
-cleansing have been audited. P11532 is excluded in Stage 9.5; the project now aims to run
-external validation on proteins not used for any design decision, test probability calibration
-across proteins, and determine whether any signal generalizes beyond the current proteins. No
-broad biological hypothesis or generalizable
+expansion, its Stage 9.3 realignment, the Stage 9.4 103-protein scaling, the Stage 9.5
+cleansing, and the Stage 10.1 spatial feature engineering have been audited. P11532 is excluded
+in Stage 9.5; the project now aims to run external validation on proteins not used for any design
+decision, test probability calibration across proteins, and determine whether any signal
+generalizes beyond the current proteins. No broad biological hypothesis or generalizable
 predictive model exists yet. See [Limitations and Future Work](#limitations-and-future-work).
 
 ## Research FAQ
@@ -93,7 +100,7 @@ features suitable for AI research. The current work addresses *data quality and 
 a specific biological hypothesis is not yet part of the project.
 
 **What has been completed so far?**
-Stages 1–9.5: sequence analysis, structure analysis (ubiquitin reference), residue-level feature
+Stages 1–10.1: sequence analysis, structure analysis (ubiquitin reference), residue-level feature
 extraction (ubiquitin, 76 × 28), dataset planning (7 proteins, 6 functional categories), the
 controlled AlphaFold DB download and validation (14 v6 files, checksums and sequences verified),
 and the multi-protein dataset (1,098 residues × 29 columns). All four extraction test suites pass
@@ -151,6 +158,22 @@ median per-protein ROC moves only from 0.7359 to 0.7371. Within-protein z-scored
 0.6877 (XGB) / 0.6891 (RF). Cleansing improves validity, not generalization. See
 [`docs/PROJECT_STATUS.md`](docs/PROJECT_STATUS.md) §19.
 
+**Stage 10.1** adds three **radius-8.0 Å spatial-neighborhood features** computed from Cα
+coordinates: `spatial_density_8a` (number of other residues within 8.0 Å),
+`spatial_plddt_mean_8a` (mean pLDDT of those neighbors), and `spatial_pae_mean_8a` (mean
+`PAE[i, j]` from residue *i* to its neighbors). The
+[spatial dataset](results/dataset/production_dataset_100_spatial.csv) is **55,503 × 15**
+(102 proteins, 955 positives, 78 evaluable folds), with **0 NaN** in the new columns and pure
+LF line endings. Before features were written, every input row was matched to its AFDB CIF/PAE;
+an independent parser and naive neighbor loop then reproduced all **166,509** new values with
+**zero mismatches**. LOGO-CV with 16 features (13 frozen + 3 spatial) gives XGBoost median ROC
+0.7786 / PR 0.0925 and pooled ROC 0.7676 / PR 0.0759 (gain 4.41x); Random Forest gives median
+ROC 0.7724 / PR 0.0894 and pooled ROC 0.7568 / PR 0.0668 (gain 3.88x). Versus Stage 9.5, median
+ROC rises by +0.0415 (XGB) / +0.0394 (RF), and within-protein z-scored ROC rises from 0.6877 to
+0.7156 (XGB) and 0.6891 to 0.7059 (RF), so the gain is not only between-protein ordering. It is
+still **internal feature engineering, not external validation**. See
+[`docs/PROJECT_STATUS.md`](docs/PROJECT_STATUS.md) §20.
+
 **Is this already an AI model for drug discovery?**
 No. There is no generalizable trained model for function prediction, no molecular docking, no
 molecular dynamics, no compound screening, and no wet-lab validation. AlphaFold itself is a
@@ -168,10 +191,12 @@ compute does not by itself produce better science. See
 
 **What are the next research goals?**
 P11532 has now been excluded in Stage 9.5, yielding a clean 102-protein / 55,503-residue
-dataset with no missing structural values. Use that as the scaling artifact while keeping the
-same invariant feature definition and A+B label policy. Run external validation on proteins not
-used for feature selection; test probability calibration across proteins; report within-protein
-and median per-protein metrics alongside pooled ROC; and only then evaluate whether a broader
+dataset with no missing structural values, and Stage 10.1 has added audited spatial-neighborhood
+features on top of it. Use Stage 10.1 as the current feature set while keeping the A+B label
+policy, but treat the radius and feature definitions as candidates: run a radius sweep and an
+ablation against the 13 frozen features, then run **external validation** on proteins not used
+for feature selection; test probability calibration across proteins; report within-protein and
+median per-protein metrics alongside pooled ROC; and only then evaluate whether a broader
 biological question (e.g., GO terms or EC numbers) is supportable.
 
 **Is the project open to academic collaboration?**
@@ -194,7 +219,8 @@ flowchart TD
     I --> J["Realigned real-AFDB dataset<br/>frozen feature definitions — Stage 9.3"]
     J --> K["Production dataset<br/>103 proteins · 59,188 residues — Stage 9.4"]
     K --> K2["Cleaned production dataset<br/>102 proteins · 55,503 residues — Stage 9.5"]
-    K2 --> L["External validation + cross-protein calibration<br/>Stage 10 — next"]
+    K2 --> K3["Spatial feature dataset<br/>55,503 × 15 · radius-8 Å features — Stage 10.1"]
+    K3 --> L["External validation + cross-protein calibration<br/>Stage 10.2+ — next"]
 ```
 
 Each arrow is a checkpoint, not just a hand-off: the structure data is validated against
@@ -220,6 +246,7 @@ Pipeline status across all stages — as of the latest verified runs:
 | 9.3 | Realigned real-AFDB dataset — 3,960 × 12, frozen feature definitions | **AUDITED** — features/labels 100% match fresh AFDB + UniProt; median/pooled/gain reproduced; PR-IQR discrepancy documented |
 | 9.4 | Production dataset — 59,188 × 12, 103 proteins, 959 positives, 79 evaluable folds | **AUDITED** — sequence features/labels 59,188/59,188 and structural features 56,028/56,028 match; XGB exact; RF pooled ROC exact, median/pooled PR not; P11532 isoform caveat |
 | 9.5 | Cleaned production dataset — 55,503 × 12, 102 proteins, 955 positives, 78 evaluable folds | **AUDITED** — P11532 (3,685 rows) excluded; 0 empty/unmodeled cells; exact row-for-row derivation; XGB median ROC 0.7371 / pooled 0.7476; RF 0.7330 / 0.7476 |
+| 10.1 | Spatial feature dataset — 55,503 × 15, 102 proteins, 955 positives, 78 evaluable folds | **AUDITED** — 3 radius-8.0 Å features; 0 NaN; 166,509 new values independently reproduced (0 mismatches); XGB median ROC 0.7786 / pooled 0.7676; RF 0.7724 / 0.7568; within-protein 0.7156 / 0.7059 |
 
 **The multi-protein dataset** (`results/dataset/multi_protein_residue_features.csv`) contains
 **1,098 residue rows × 29 columns**: 3 protein identifier columns (`protein_id`,
@@ -353,6 +380,44 @@ is 0.6877 (XGB) / 0.6891 (RF), still well below pooled ROC; between-protein AUC 
 discrimination or establish generalization. Full evidence:
 [`docs/PROJECT_STATUS.md`](docs/PROJECT_STATUS.md) §19.
 
+**The Stage 10.1 spatial dataset** ([`results/dataset/production_dataset_100_spatial.csv`](results/dataset/production_dataset_100_spatial.csv))
+contains **55,503 residue rows × 15 columns** from **102 proteins**, with **955 positives
+(1.72%)** and **78 evaluable LOGO folds**. It is the Stage 9.5 cleaned dataset plus three
+appended spatial-neighborhood features computed from Cα coordinates:
+
+| Feature | Definition (self excluded) |
+|---|---|
+| `spatial_density_8a` | number of residues *j ≠ i* with Cα–Cα distance ≤ 8.0 Å |
+| `spatial_plddt_mean_8a` | mean Cα pLDDT of those neighbors (rounded to 3 decimals) |
+| `spatial_pae_mean_8a` | mean `PAE[i, j]` from residue *i* to those neighbors (directed row; 3 decimals) |
+
+The new columns contain **0 NaN** (density ranges 2–21, mean 8.8064), all 12 original columns
+are unchanged string-for-string, and the file is LF-terminated with no BOM. It is 5,313,161
+bytes. SHA256:
+`8e21534055132c8cf4eb823e1abda224a15776b437b94bbc851f1ea4a99a3319`.
+
+| Model | Median ROC-AUC (IQR) | Median PR-AUC (IQR) | Pooled ROC-AUC | Pooled PR-AUC (gain) |
+|---|---:|---:|---:|---:|
+| XGBoost | **0.7786** (0.1987) | **0.0925** (0.1155) | **0.7676** | **0.0759** (4.41x) |
+| Random Forest | **0.7724** (0.2138) | **0.0894** (0.1752) | **0.7568** | **0.0668** (3.88x) |
+
+**Independent audit.** Every input row was matched to its AFDB v6 CIF/PAE before features were
+written (`n_atoms`, `plddt_ca`, `pae_mean_row`, `pae_mean_col`, `pae_local_mean_k10`, sequence,
+and checksum all agree). A second, independent implementation — a plain-text CIF parser and a
+naive per-residue neighbor loop — reproduced **166,509/166,509** new values with **zero
+mismatches**. The input structural files came from the audited Stage 9.4 cache outside the
+tracked tree; `download/` contains no PDB/CIF/PAE files, and no new download was performed.
+**Impact.** Versus Stage 9.5, XGBoost median ROC rises 0.7371 → 0.7786 (+0.0415) and pooled ROC
+0.7476 → 0.7676 (+0.0200); Random Forest median ROC rises 0.7330 → 0.7724 (+0.0394) and pooled
+ROC 0.7476 → 0.7568 (+0.0091). Paired per-fold deltas are positive on 49/78 (XGB) and 54/78
+(RF) folds. Crucially, **within-protein z-scored pooled ROC** rises from 0.6877 to 0.7156 (XGB)
+and 0.6891 to 0.7059 (RF), so this is not purely between-protein ordering. Between-protein AUC
+remains ~0.78 and pooled ROC remains inflated by cross-protein score differences. Two spatial
+features are also collinear with existing ones (`spatial_plddt_mean_8a` vs `plddt_ca` Pearson
+0.9885; `spatial_pae_mean_8a` vs `pae_local_mean_k10` Spearman 0.8800), so the improvement is a
+candidate result, not proof that 3D geometry adds independent biological signal. Full evidence:
+[`docs/PROJECT_STATUS.md`](docs/PROJECT_STATUS.md) §20.
+
 **Verification suites** (all measured on freshly generated outputs; each script exits `0` only if
 every check passes):
 
@@ -363,15 +428,17 @@ every check passes):
 | `src/test_afdb_download.py` | Stage 5 — file integrity, checksums, metadata | 16/16 PASS |
 | `src/test_multi_protein_features.py` | Stage 6 — recomputation from raw files; reproducibility | 24/24 PASS |
 
-**Current status:** Stages 1–9.5 are complete. A frozen Stage 8.2 benchmark and a reproducible
+**Current status:** Stages 1–10.1 are complete. A frozen Stage 8.2 benchmark and a reproducible
 ML baseline exist, alongside an independently audited 14-protein Stage 9.2 expansion, its Stage
 9.3 realignment to the frozen feature definitions, the 103-protein Stage 9.4 production
-dataset, and the cleaned 102-protein Stage 9.5 dataset. XGBoost reproduces exactly at every
-stage; Stage 9.4 Random Forest reproduces pooled ROC but not median ROC or pooled PR (Stage
-9.5 metrics are computed directly, with no external claim to reproduce). P11532 is excluded in
-Stage 9.5, leaving zero missing structural values. No biological conclusions or generalization
-claims are drawn from any expansion; the next gate is external validation and cross-protein
-calibration.
+dataset, the cleaned 102-protein Stage 9.5 dataset, and the 55,503 × 15 Stage 10.1 spatial
+dataset. XGBoost reproduces exactly at every stage; Stage 9.4 Random Forest reproduces pooled
+ROC but not median ROC or pooled PR (Stage 9.5 and 10.1 metrics are computed directly, with no
+external claim to reproduce). P11532 is excluded in Stage 9.5, leaving zero missing structural
+values. Stage 10.1 adds three audited radius-8.0 Å neighborhood features and improves both
+median and within-protein ROC, but it is still internal feature engineering. No biological
+conclusions or generalization claims are drawn from any expansion; the next gate is external
+validation and cross-protein calibration.
 
 ## Dataset Visualizations
 
@@ -412,10 +479,11 @@ ai-biotech/
 │   ├── extract_multi_protein_features.py    # Stage 6: multi-protein feature extraction
 │   └── test_*.py                            # integrity test suites (Stages 3–6)
 ├── results/
-│   ├── dataset/                             # Stage 4–9.5 outputs (CSV · JSON · PNG)
+│   ├── dataset/                             # Stage 4–10.1 outputs (CSV · JSON · PNG)
 │   │   ├── stage7_processed_dataset.csv     # frozen benchmark (1,098 × 27, SHA256-locked)
 │   │   ├── production_dataset_100_realigned.csv  # Stage 9.4 (59,188 × 12, 103 proteins)
-│   │   └── production_dataset_100_cleaned.csv    # Stage 9.5 (55,503 × 12, 102 proteins, P11532 excluded)
+│   │   ├── production_dataset_100_cleaned.csv    # Stage 9.5 (55,503 × 12, 102 proteins, P11532 excluded)
+│   │   └── production_dataset_100_spatial.csv    # Stage 10.1 (55,503 × 15, + 3 radius-8 Å features)
 │   └── ...                                  # Stage 1–3 outputs (JSON · CSV · PNG)
 ├── docs/
 │   ├── DATASET_PLAN.md                      # dataset source plan & candidate selection
@@ -524,7 +592,7 @@ in this repository should be read as experimentally validated structure or funct
 
 ## Limitations and Future Work
 
-### Completed (Stages 1–9.5)
+### Completed (Stages 1–10.1)
 
 Protein data retrieval (AlphaFold Server reference structure; 7 curated AlphaFold DB entries),
 structure validation (checksums, sequence matching, PAE shape), residue-level feature extraction
@@ -534,20 +602,22 @@ Stage 8.2 baseline, the independently audited Stage 9.2 expansion (14 proteins; 
 real AFDB CIF/PAE; A+B labels verified against UniProt), the Stage 9.3 realignment to the
 frozen feature definitions (zero feature/label mismatches against fresh AFDB/UniProt downloads),
 the Stage 9.4 production dataset (103 proteins; 59,188 × 12; all sequence features/labels and
-56,028 modeled structural rows verified; XGBoost exact), and the Stage 9.5 cleaned dataset
-(102 proteins; 55,503 × 12; P11532 excluded; zero missing structural values; LOGO-CV re-trained).
-Details and evidence in [Current Results](#current-results),
+56,028 modeled structural rows verified; XGBoost exact), the Stage 9.5 cleaned dataset
+(102 proteins; 55,503 × 12; P11532 excluded; zero missing structural values; LOGO-CV re-trained),
+and the Stage 10.1 spatial feature dataset (55,503 × 15; three radius-8.0 Å neighborhood
+features; 166,509 new values independently reproduced; 0 NaN; LOGO-CV re-trained with 16
+features). Details and evidence in [Current Results](#current-results),
 [`docs/BENCHMARK_DATASET_LOCK.md`](docs/BENCHMARK_DATASET_LOCK.md), and
-[`docs/PROJECT_STATUS.md`](docs/PROJECT_STATUS.md) §16–§19.
+[`docs/PROJECT_STATUS.md`](docs/PROJECT_STATUS.md) §16–§20.
 
 ### Not yet completed
 
 None of the following exist yet, and none are claimed:
 
 - **Generalizable predictive models.** Baselines have been trained and evaluated (Stage 8.2 on 7
-  proteins; Stage 9.5 on 102). Stage 8.2 pooled ROC-AUC is close to random; Stage 9.5 reaches
-  0.7476 pooled but only 0.6877 within-protein and has no external validation. No model is claimed
-  to predict protein function in general.
+  proteins; Stage 9.5 on 102; Stage 10.1 on 102 with 16 features). Stage 8.2 pooled ROC-AUC is
+  close to random; Stage 10.1 reaches 0.7676 pooled (XGB) but only 0.7156 within-protein and has
+  no external validation. No model is claimed to predict protein function in general.
 - **Molecular docking, molecular dynamics, compound screening.** No such analysis exists in this
   project.
 - **Experimental validation.** No wet-lab work, and the predictions have not been compared
@@ -578,12 +648,22 @@ None of the following exist yet, and none are claimed:
   configuration reproduces 0.7397 exactly; the configuration matching pooled ROC gives 0.7339.
   Stage 9.5 RF metrics are computed directly from the cleaned dataset; there is no external RF
   summary to reproduce.
-- **Pooled ROC is not a generalization metric.** The Stage 8.2 → 9.5 increase (0.5368 → 0.7476)
-  uses different datasets, prevalence (4.19% → 1.72%), and fold counts. Within-protein z-scored
-  pooled ROC is 0.6877 (XGB) / 0.6891 (RF), between-protein AUC is 0.7851 / 0.7824, and median
-  per-protein ROC improves only from 0.7185 to 0.7371. Absolute pooled PR falls from 0.0916 to
-  0.0640. The Stage 9.4 value (0.7575) was partly inflated by the P11532 rows and drops to
-  0.7476 after cleansing.
+- **Pooled ROC is not a generalization metric.** The Stage 8.2 → 10.1 increase (0.5368 → 0.7676
+  XGB / 0.7568 RF) uses different datasets, prevalence (4.19% → 1.72%), and fold counts.
+  Within-protein z-scored pooled ROC is 0.6877 → 0.7156 (XGB) and 0.6891 → 0.7059 (RF),
+  between-protein AUC remains 0.7785 / 0.7824, and median per-protein ROC improves from 0.7185
+  (Stage 8.2) to 0.7786 (Stage 10.1, XGB). Absolute pooled PR falls from 0.0916 (Stage 8.2) to
+  0.0759 (Stage 10.1, XGB). The Stage 9.4 value (0.7575) was partly inflated by P11532 and drops
+  to 0.7476 after cleansing.
+- **Spatial features are collinear and radius is fixed.** `spatial_plddt_mean_8a` correlates
+  0.9885 (Pearson) with `plddt_ca`, and `spatial_pae_mean_8a` correlates 0.8800 (Spearman) with
+  `pae_local_mean_k10`. Only `spatial_density_8a` is relatively distinct. Radius 8.0 Å was chosen
+  a priori; no radius sweep, feature ablation, or importance-stability test has been run, and the
+  improvement is internal to the same 102 proteins.
+- **Stage 10.1 inputs are outside the repository.** `download/` contains no PDB/CIF/PAE files;
+  the extractor used the audited Stage 9.4 AFDB cache in a temporary directory. The dataset
+  SHA256 is reproducible from that cache, but a fresh clone cannot rerun extraction without
+  obtaining the same structural files.
 - **P00720 absent from AlphaFold DB.** Endolysin returns HTTP 404, so the processed Stage
   9.2/9.3 datasets have 14 proteins even though the metadata file covers 15.
 - **Prediction-only ground truth.** The datasets store AlphaFold predictions with no attached
@@ -594,17 +674,20 @@ None of the following exist yet, and none are claimed:
 
 1. **P11532 is excluded in Stage 9.5.** If a sequence-aligned full-length source becomes
    available, rebuild it as a separate artifact; do not edit the cleaned dataset.
-2. **Decide the benchmark status of Stage 9.3, 9.4, and 9.5** — lock each as a separate
+2. **Decide the benchmark status of Stage 9.3, 9.4, 9.5, and 10.1** — lock each as a separate
    benchmark with its own SHA256-bearing entry, or keep them as expansion artifacts. Stage 9.2
    remains historical only.
 3. **Keep the Stage 8.2 benchmark frozen** — create a new dataset version and lock entry rather
    than editing the current artifact.
-4. **Run external validation** on proteins not used for feature selection, report probability
+4. **Treat Stage 10.1 as a feature candidate, not a conclusion.** Run a radius sweep, an
+   ablation against the 13 frozen features, and an importance-stability check before promoting
+   the spatial features into a new benchmark.
+5. **Run external validation** on proteins not used for feature selection, report probability
    calibration across proteins, and include within-protein and median per-protein metrics rather
    than relying on pooled ROC.
-5. **Pin ML dependencies** (`scikit-learn`, `xgboost`, `scipy`) before running experiments from a
+6. **Pin ML dependencies** (`scikit-learn`, `xgboost`, `scipy`) before running experiments from a
    clean checkout.
-6. **Evaluate broader label policies** (GO terms, EC numbers) only after the expanded dataset
+7. **Evaluate broader label policies** (GO terms, EC numbers) only after the expanded dataset
    exists; the current A+B benchmark must remain comparable.
 
 ## Computing Resources and Research Support
@@ -613,9 +696,11 @@ All work in this repository has been conducted at a limited scale: the frozen be
 7 proteins / 1,098 residue rows and about 1.5 MB of prediction files; the Stage 9.2/9.3 audits
 each covered 14 proteins / 3,960 residue rows and about 9.3 MB of AlphaFold DB CIF/PAE files;
 the Stage 9.4 audit covered 103 proteins / 59,188 residue rows, 206 CIF/PAE files (~175 MB),
-and a 4.6 MB processed CSV; and the Stage 9.5 cleansing produced a 4.5 MB cleaned CSV and
-re-ran LOGO-CV on 102 folds without additional downloads. All were processed end-to-end on a
-standard machine with plain Python
+and a 4.6 MB processed CSV; the Stage 9.5 cleansing produced a 4.5 MB cleaned CSV and re-ran
+LOGO-CV on 102 folds without additional downloads; and Stage 10.1 computed radius-8.0 Å
+neighborhood features for all 102 proteins from the existing CIF/PAE cache, producing a 5.3 MB
+CSV and re-running LOGO-CV with 16 features. All were processed end-to-end on a standard machine
+with plain Python
 libraries (Biopython, pandas, NumPy, matplotlib). **No GPU or HPC resource is required to run or
 reproduce the current pipeline** — a laptop suffices.
 
@@ -653,7 +738,7 @@ a technical guide to Biopython's role in modern bioinformatics and AI4Bio.
 
 | Document | Contents |
 |---|---|
-| [`docs/PROJECT_STATUS.md`](docs/PROJECT_STATUS.md) | Single source of truth for project status; §16–§19 contain the Stage 9.2, 9.3, 9.4, and 9.5 audits |
+| [`docs/PROJECT_STATUS.md`](docs/PROJECT_STATUS.md) | Single source of truth for project status; §16–§20 contain the Stage 9.2, 9.3, 9.4, 9.5, and 10.1 audits |
 | [`docs/BENCHMARK_DATASET_LOCK.md`](docs/BENCHMARK_DATASET_LOCK.md) | Frozen benchmark contract, label policy, fold map, and Stage 8.2 metrics |
 | [`docs/DATASET_PLAN.md`](docs/DATASET_PLAN.md) | Dataset source plan and candidate selection |
 | [`docs/TAHAP_5_AFDB_DOWNLOAD_REPORT.md`](docs/TAHAP_5_AFDB_DOWNLOAD_REPORT.md) | Stage 5 download and integrity report |
