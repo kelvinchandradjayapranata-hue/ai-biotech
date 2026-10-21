@@ -10,7 +10,7 @@
 
 <p align="center">
   <img alt="Python 3.12.10" src="https://img.shields.io/badge/Python-3.12.10-3776AB?logo=python&logoColor=white">
-  <img alt="Status: Stages 1–10.3 complete, Stage 8.2 benchmark locked" src="https://img.shields.io/badge/Status-Stages%201%E2%80%9310.3%20complete%20%C2%B7%20Stage%208.2%20benchmark%20locked-brightgreen">
+  <img alt="Status: Stages 1–11 complete, Stage 8.2 benchmark locked" src="https://img.shields.io/badge/Status-Stages%201%E2%80%9311%20complete%20%C2%B7%20Stage%208.2%20benchmark%20locked-brightgreen">
   <img alt="Data source: AlphaFold Database v6" src="https://img.shields.io/badge/Data-AlphaFold%20Database%20v6-blue">
 </p>
 
@@ -55,9 +55,14 @@ inflation. **Stage 10.3** tunes XGBoost, LightGBM, and Random Forest on that sam
 strategies, and selects a golden LightGBM model: median ROC 0.8411 / PR 0.1693, pooled ROC
 0.8131 / PR 0.1142 (6.63x prevalence), within-protein z-scored ROC 0.7709. Nested LOGO-CV
 with an inner `GroupKFold(5)` lowers median PR to 0.1550 and pooled gain to 4.55x, quantifying
-selection optimism. These remain data-engineering, feature-engineering, tuning, and
-calibration-audit milestones, not external validation, and the pooled ROC increase is not a
-like-for-like measure of generalization.
+selection optimism. **Stage 11** trains that golden configuration on all 55,503 rows, adds a
+sigmoid calibrator fitted on the out-of-fold scores, and packages both into a versioned
+`results/models/golden_lightgbm_12a.joblib` artifact. A standalone CLI
+(`src/predict.py`) now turns a UniProt accession or a local CIF/PDB structure (with PAE) into
+calibrated per-residue Active/Binding Site probabilities. This is deployment of an internally
+selected model, not external validation: the calibrator is fitted on the same proteins used
+for evaluation, the 0.5 display threshold is not a validated biological cutoff, and no
+prediction has been tested on a truly unseen protein.
 
 ## Research Objectives
 
@@ -86,17 +91,21 @@ out-of-fold on the same 102 proteins; calibration improves the absolute probabil
 ranking metrics or between-protein inflation. Stage 10.3 tunes XGBoost/LightGBM/Random Forest
 across 101 unique configurations, compares imbalance strategies, and selects a golden LightGBM
 (median PR 0.1693, pooled gain 6.63x); nested LOGO-CV reduces these to 0.1550 and 4.55x, exposing
-selection optimism (see [Current Results](#current-results)).
+selection optimism. Stage 11 serializes that model and an out-of-fold sigmoid calibrator into a
+versioned joblib artifact, and adds a standalone CLI that computes the 16 required features and
+writes calibrated per-residue probabilities (see [Current Results](#current-results)).
 
 **Future goals.** The benchmark dataset and a baseline are now in place, and the Stage 9.2
 expansion, its Stage 9.3 realignment, the Stage 9.4 103-protein scaling, the Stage 9.5
 cleansing, the Stage 10.1 spatial feature engineering, the Stage 10.2 radius sweep +
-out-of-fold calibration, and the Stage 10.3 tuning/golden-model selection have been audited.
-P11532 is excluded in Stage 9.5; the project now aims to run external validation on proteins
-not used for any design decision, test calibration on truly unseen proteins, and determine
-whether any signal generalizes beyond the current 102 proteins. Feature ablation, importance
-stability across seeds, and radii above 12 Å remain open. No broad biological hypothesis or
-generalizable predictive model exists yet. See
+out-of-fold calibration, the Stage 10.3 tuning/golden-model selection, and the Stage 11
+model export + inference pipeline have been audited. P11532 is excluded in Stage 9.5; the
+project now aims to run external validation on proteins not used for any design decision,
+test calibration on truly unseen proteins, and determine whether any signal generalizes
+beyond the current 102 proteins. Stage 11 makes the current model reproducible to run, but
+it does not add validation evidence. Feature ablation, importance stability across seeds,
+radii above 12 Å, and a nested/held-out estimate of the deployed artifact remain open. No
+broad biological hypothesis or generalizable predictive model exists yet. See
 [Limitations and Future Work](#limitations-and-future-work).
 
 ## Research FAQ
@@ -118,7 +127,7 @@ features suitable for AI research. The current work addresses *data quality and 
 a specific biological hypothesis is not yet part of the project.
 
 **What has been completed so far?**
-Stages 1–10.3: sequence analysis, structure analysis (ubiquitin reference), residue-level feature
+Stages 1–11: sequence analysis, structure analysis (ubiquitin reference), residue-level feature
 extraction (ubiquitin, 76 × 28), dataset planning (7 proteins, 6 functional categories), the
 controlled AlphaFold DB download and validation (14 v6 files, checksums and sequences verified),
 and the multi-protein dataset (1,098 residues × 29 columns). All four extraction test suites pass
@@ -231,6 +240,28 @@ median PR 0.1550 and pooled gain 4.55x, so part of the gain is selection optimis
 internal evaluation on the same 102 proteins, not external validation. See
 [`docs/PROJECT_STATUS.md`](docs/PROJECT_STATUS.md) §22.
 
+**Stage 11** retrains that golden LightGBM on all **55,503 rows / 102 proteins** and fits a
+sigmoid calibrator on the **out-of-fold** scores. It writes a single artifact,
+[`results/models/golden_lightgbm_12a.joblib`](results/models/golden_lightgbm_12a.joblib)
+(157,432 bytes, SHA256 `98c86efbebcb7e7986921386a07ca76319c453536dd8e4a2afd2a9b8085445da`),
+containing the model, both calibrators, the exact 16-feature contract, dataset metadata, OOF
+metrics, and the Python/library environment. On the OOF scores, sigmoid calibration reduces
+Brier from 0.052005 to 0.016072 and ECE from 0.122838 to 0.000811, with mean predicted
+probability 0.017206 against a 0.017206 prevalence; isotonic reaches Brier 0.015955 but
+collapses 55,503 scores to 45 unique values, so sigmoid is deployed. The standalone CLI
+`src/predict.py` accepts `--uniprot <ACC>` (downloads AFDB v6 CIF + PAE, with cache) or
+`--structure <file.cif|file.pdb>` plus `--pae <file.json>` (or an AFDB-style sibling PAE),
+recomputes the 16 features (including radius-12 Å Cα neighborhoods), and emits per-residue
+`probability_raw`, `probability_calibrated`, and `predicted_active_binding`. It was tested on
+P02144 (154 residues) from local CIF, local PDB, and AFDB download: all modes produce identical
+feature/probability values, with zero errors. Feature parity against the committed dataset has
+a maximum difference of 3.55e-15 and **0 values above 1e-12**; model probabilities are
+bit-identical. P00520 (1,123 residues) also runs cleanly. At the default 0.5 display threshold,
+neither protein receives a positive call (maximum calibrated probability 0.1471 for P02144 and
+0.1548 for P00520), which is expected for a conservative calibration and is another reason the
+threshold must not be read as a validated cutoff. See
+[`docs/PROJECT_STATUS.md`](docs/PROJECT_STATUS.md) §23.
+
 **Is this already an AI model for drug discovery?**
 No. There is no generalizable trained model for function prediction, no molecular docking, no
 molecular dynamics, no compound screening, and no wet-lab validation. AlphaFold itself is a
@@ -283,7 +314,8 @@ flowchart TD
     K2 --> K3["Spatial feature dataset<br/>55,503 × 15 · radius-8 Å features — Stage 10.1"]
     K3 --> K4["Multi-radius sweep + OOF calibration<br/>55,503 × 21 · radius 12 Å — Stage 10.2"]
     K4 --> K5["Directed tuning + golden model selection<br/>101 configs · 102-fold LOGO — Stage 10.3"]
-    K5 --> L["External validation<br/>Stage 10.4+ — next"]
+    K5 --> L["Model export + inference CLI<br/>golden LightGBM + sigmoid · joblib — Stage 11"]
+    L --> M["External validation<br/>not yet started — next gate"]
 ```
 
 Each arrow is a checkpoint, not just a hand-off: the structure data is validated against
@@ -312,6 +344,7 @@ Pipeline status across all stages — as of the latest verified runs:
 | 10.1 | Spatial feature dataset — 55,503 × 15, 102 proteins, 955 positives, 78 evaluable folds | **AUDITED** — 3 radius-8.0 Å features; 0 NaN; 166,509 new values independently reproduced (0 mismatches); XGB median ROC 0.7786 / pooled 0.7676; RF 0.7724 / 0.7568; within-protein 0.7156 / 0.7059 |
 | 10.2 | Calibrated multi-radius dataset — 55,503 × 21, 102 proteins, 955 positives, 78 evaluable folds | **AUDITED** — radii 6/8/10/12 Å, **12 Å selected** by a pre-declared rule; Friedman p < 1.5e-06; XGB median ROC 0.8120 / pooled 0.7956; RF 0.8089 / 0.7759; isotonic/sigmoid improve Brier/ECE but not pooled/within; 6 OOF columns verified (0 mismatches); 0 NaN, LF |
 | 10.3 | Tuned golden model — 101 unique configs on the 16-feature, 12 Å dataset, 102 proteins, 78 evaluable folds | **AUDITED** — 44 XGBoost + 46 LightGBM + 8 Random Forest (+3 re-evaluated pass-selected combinations); golden LightGBM `lgbm__032c38ffe37f`: median ROC 0.8411 / PR 0.1693, pooled ROC 0.8131 / PR 0.1142 (6.63x), within-z 0.7709, Brier 0.0520, ECE 0.1228 (raw); nested LOGO-CV median PR 0.1550 / pooled gain 4.55x; no external validation |
+| 11 | Production artifact + inference CLI — 1 joblib artifact, `src/export_model.py`, `src/inference_features.py`, `src/predict.py` | **TESTED** — model trained on all 55,503 rows; OOF reproduced (max diff 0.0); sigmoid Brier 0.016072 / ECE 0.000811 on OOF; P02144 (154 aa) and P00520 (1,123 aa) run with zero errors; local CIF/PDB/AFDB outputs identical; P02144 feature parity 0 values >1e-12; **not external validation** |
 
 **The multi-protein dataset** (`results/dataset/multi_protein_residue_features.csv`) contains
 **1,098 residue rows × 29 columns**: 3 protein identifier columns (`protein_id`,
@@ -622,6 +655,86 @@ still comes from global tuning, so nested remains optimistic and is not external
 comparable to the Stage 10.2 calibrated scores (0.0163 / 0.0016). Full evidence:
 [`docs/PROJECT_STATUS.md`](docs/PROJECT_STATUS.md) §22.
 
+**Stage 11 — production artifact and standalone inference.** Stage 11 packages the Stage 10.3
+golden configuration into a reproducible artifact and a CLI. It adds no dataset, no protein,
+and no validation evidence.
+
+*Artifact.* [`results/models/golden_lightgbm_12a.joblib`](results/models/golden_lightgbm_12a.joblib)
+is **157,432 bytes**, SHA256 `98c86efbebcb7e7986921386a07ca76319c453536dd8e4a2afd2a9b8085445da`.
+It contains the LightGBM classifier trained on **all 55,503 rows / 102 proteins**, the deployed
+sigmoid calibrator and the isotonic comparator, the exact 16 feature names and order, model
+parameters and kwargs, dataset provenance (including the calibrated CSV SHA256), Stage 10.3 OOF
+metrics, calibration metrics, feature importance, limitations, and the Python/library
+environment. `src/export_model.py` refuses to export unless the input CSV matches the recorded
+SHA256, byte size, row/protein/positive counts, and feature contract.
+
+*Training and calibration protocol.* The script re-runs 102-fold LOGO-CV with the golden
+configuration to reconstruct the out-of-fold scores, verifies them at `atol=1e-9`, then fits
+the calibrators on those OOF scores and finally retrains the base model on all rows. OOF
+reproduction against the Stage 10.3 reference is exact (maximum absolute difference **0.0**).
+The deployed sigmoid is `sigmoid(0.8216068 × logit(p_raw) − 2.7257097)` with logit clipping at
+1e-6. It was chosen before evaluation because it is rank-preserving and creates no ties;
+isotonic is kept only as an audit comparator.
+
+| Calibration on OOF (55,503 rows) | Mean predicted | Brier | Log loss | ECE (10 bins) | Unique values |
+|---|---:|---:|---:|---:|---:|
+| raw LightGBM | 0.140044 | 0.052005 | 0.191708 | 0.122838 | 53,670 |
+| **sigmoid (deployed)** | **0.017206** | **0.016072** | 0.073974 | **0.000811** | 53,670 |
+| isotonic (comparator) | 0.017206 | 0.015955 | 0.073141 | ≈0 | **45** |
+
+Observed prevalence is 0.017206, so the sigmoid brings the mean predicted probability onto the
+observed base rate while preserving every score ordering. These are **in-sample calibration
+fits on OOF scores**, not a held-out performance estimate. The artifact also records in-sample
+metrics for the final all-rows model (raw Brier 0.045595; sigmoid 0.014528) with an explicit
+warning that they are a sanity check only.
+
+*Inference CLI.* `src/predict.py` accepts either a UniProt accession or a local structure:
+
+```bash
+# UniProt: download canonical AFDB v6 CIF + PAE (cached), then predict
+python src/predict.py --uniprot P02144 --out results/predictions/P02144.csv
+
+# Local CIF with explicit PAE
+python src/predict.py --structure AF-P02144-F1-model_v6.cif \
+    --pae AF-P02144-F1-predicted_aligned_error_v6.json --out P02144_local.csv
+
+# Local PDB converted from AFDB; PAE auto-discovered from an AFDB-style filename
+python src/predict.py --structure AF-P02144-F1-model_v6.pdb --out P02144_pdb.csv
+
+# Optional 16-feature audit table and a custom display threshold
+python src/predict.py --uniprot P00520 --threshold 0.5 --top 10 \
+    --features-out P00520_features.csv --out P00520.csv
+```
+
+Output columns are `protein_id, uniprot_id, sequence_position, amino_acid, plddt_ca,
+probability_raw, probability_calibrated, predicted_active_binding`; the summary JSON goes to
+stderr (CSV to stdout unless `--out` is given). Errors exit with code 2. Inputs must be
+single-chain (or selected with `--chain`), numbered 1..N without renumbering, with residue
+B-factors holding pLDDT in [0, 100], and with an N×N PAE matrix. HETATM records and altlocs
+other than blank/A are skipped; insertion codes are rejected. A residue with zero neighbors
+inside 12 Å is an error — there is no imputation. Experimental PDB files generally do **not**
+satisfy the pLDDT/PAE requirement and are unsupported unless converted from an AlphaFold
+prediction.
+
+*Test evidence.* P02144 (myoglobin, 154 residues) was run from a local CIF, a local PDB, and a
+fresh AFDB download. All three produce identical numeric output columns; the AFDB run was
+repeated from cache with the same result. Extracted features match the committed dataset with
+maximum absolute difference **3.55e-15** and **0 values above 1e-12**; raw and calibrated model
+probabilities are bit-identical (difference 0.0). P00520 (1,123 residues) also exits 0. Error
+paths were exercised: a missing PAE file exits 2, and a two-chain PDB without `--chain` exits 2
+with an explicit message; `--chain A` then succeeds.
+
+*What this does and does not mean.* The CLI reproduces the model's scores correctly on
+AlphaFold-style inputs. It does **not** establish that those scores are biologically correct.
+The final model was trained on every protein in the dataset, the calibrator was fitted on OOF
+scores from those same proteins, and no protein has been held out from feature, radius, or
+hyperparameter design. Calibrated probabilities on P02144 and P00520 top out at 0.1471 and
+0.1548, so the 0.5 display threshold yields zero calls; it is a display convention, not a
+validated diagnostic cutoff. The true positives in P02144 (H65, H94) are training labels and
+are not evidence — H65 ranks fourth by calibrated probability, but that number cannot be
+reported as validation. Full evidence:
+[`docs/PROJECT_STATUS.md`](docs/PROJECT_STATUS.md) §23.
+
 **Verification suites** (all measured on freshly generated outputs; each script exits `0` only if
 every check passes):
 
@@ -632,22 +745,25 @@ every check passes):
 | `src/test_afdb_download.py` | Stage 5 — file integrity, checksums, metadata | 16/16 PASS |
 | `src/test_multi_protein_features.py` | Stage 6 — recomputation from raw files; reproducibility | 24/24 PASS |
 
-**Current status:** Stages 1–10.3 are complete. A frozen Stage 8.2 benchmark and a reproducible
+**Current status:** Stages 1–11 are complete. A frozen Stage 8.2 benchmark and a reproducible
 ML baseline exist, alongside an independently audited 14-protein Stage 9.2 expansion, its Stage
 9.3 realignment to the frozen feature definitions, the 103-protein Stage 9.4 production
 dataset, the cleaned 102-protein Stage 9.5 dataset, the 55,503 × 15 Stage 10.1 spatial dataset,
-the 55,503 × 21 Stage 10.2 calibrated dataset (radius 12 Å plus six OOF score columns), and the
-Stage 10.3 directed tuning and golden-model selection over 101 configurations. Stage 10.3 selects
-a LightGBM golden model (median PR 0.1693, pooled PR gain 6.63x), but nested LOGO-CV drops to
-0.1550 median PR / 4.55x, and it is still internal evaluation on the same 102 proteins. XGBoost
-reproduces exactly at every stage; Stage 9.4 Random Forest reproduces pooled ROC but not median
-ROC or pooled PR (later metrics are computed directly, with no external claim to reproduce).
-P11532 is excluded in Stage 9.5, leaving zero missing structural values. Stage 10.2 sweeps radii
-6/8/10/12 Å, selects 12 Å by a pre-declared rule, and shows that isotonic/sigmoid calibration
-fixes the probability scale but not ranking or cross-protein inflation. Stage 10.3's Brier/ECE
-are raw scores, and its global metrics carry selection optimism disclosed above. No biological
-conclusions or generalization claims are drawn from any expansion; the next gate is external
-validation.
+the 55,503 × 21 Stage 10.2 calibrated dataset (radius 12 Å plus six OOF score columns), the
+Stage 10.3 directed tuning and golden-model selection over 101 configurations, and the Stage 11
+exported artifact + inference CLI. Stage 10.3 selects a LightGBM golden model (median PR 0.1693,
+pooled PR gain 6.63x), but nested LOGO-CV drops to 0.1550 median PR / 4.55x, and it is still
+internal evaluation on the same 102 proteins. Stage 11 retrains that model on all rows, fits a
+sigmoid calibrator on the OOF scores, and ships a tested CLI; the calibrator is in-sample with
+respect to the final model, and no external validation was performed. XGBoost reproduces exactly
+at every stage; Stage 9.4 Random Forest reproduces pooled ROC but not median ROC or pooled PR
+(later metrics are computed directly, with no external claim to reproduce). P11532 is excluded
+in Stage 9.5, leaving zero missing structural values. Stage 10.2 sweeps radii 6/8/10/12 Å,
+selects 12 Å by a pre-declared rule, and shows that isotonic/sigmoid calibration fixes the
+probability scale but not ranking or cross-protein inflation. Stage 10.3's Brier/ECE are raw
+scores, and its global metrics carry selection optimism disclosed above. No biological
+conclusions or generalization claims are drawn from any expansion; the next gate remains
+external validation.
 
 ## Dataset Visualizations
 
@@ -686,14 +802,19 @@ ai-biotech/
 │   ├── download_afdb_dataset.py             # Stage 5: controlled AlphaFold DB download
 │   ├── validate_afdb_dataset.py             # Stage 5: offline integrity validation
 │   ├── extract_multi_protein_features.py    # Stage 6: multi-protein feature extraction
+│   ├── inference_features.py                # Stage 11: shared feature contract + AFDB parsing
+│   ├── export_model.py                      # Stage 11.1: train golden model + calibrators → joblib
+│   ├── predict.py                           # Stage 11.2: standalone inference CLI
 │   └── test_*.py                            # integrity test suites (Stages 3–6)
 ├── results/
-│   ├── dataset/                             # Stage 4–10.3 outputs (CSV · JSON · PNG)
+│   ├── dataset/                             # Stage 4–10.3 dataset outputs (CSV · JSON · PNG)
 │   │   ├── stage7_processed_dataset.csv     # frozen benchmark (1,098 × 27, SHA256-locked)
 │   │   ├── production_dataset_100_realigned.csv  # Stage 9.4 (59,188 × 12, 103 proteins)
 │   │   ├── production_dataset_100_cleaned.csv    # Stage 9.5 (55,503 × 12, 102 proteins, P11532 excluded)
 │   │   ├── production_dataset_100_spatial.csv    # Stage 10.1 (55,503 × 15, + 3 radius-8 Å features)
 │   │   └── production_dataset_100_calibrated.csv # Stage 10.2 (55,503 × 21, radius 12 Å + 6 OOF scores)
+│   ├── models/
+│   │   └── golden_lightgbm_12a.joblib       # Stage 11.1 (model + sigmoid/isotonic + feature contract)
 │   └── ...                                  # Stage 1–3 outputs (JSON · CSV · PNG)
 ├── docs/
 │   ├── DATASET_PLAN.md                      # dataset source plan & candidate selection
@@ -715,7 +836,7 @@ ai-biotech/
 ## Getting Started
 
 **Prerequisites:** Python **3.12.10**, `git`, and network access only for the optional download
-step (the dataset is already committed).
+and `--uniprot` inference steps (the dataset and model artifact are already committed).
 
 **Setup** — create the virtual environment and install dependencies:
 
@@ -764,6 +885,33 @@ python src/extract_protein_features.py
 python src/test_protein_features.py
 ```
 
+**Stage 11 — inference from the committed artifact** (no retraining needed):
+
+```bash
+# Per-residue predictions from a UniProt accession (downloads AFDB v6 CIF + PAE, cached)
+python src/predict.py --uniprot P02144 --out results/predictions/P02144.csv
+
+# Or from a local AlphaFold CIF/PDB with a PAE JSON
+python src/predict.py --structure AF-P02144-F1-model_v6.cif \
+    --pae AF-P02144-F1-predicted_aligned_error_v6.json --out P02144.csv
+
+python src/predict.py --help
+```
+
+The CSV has one row per residue with raw and sigmoid-calibrated probabilities. The summary
+JSON (residue count, top residues, file hashes, warnings) is printed to stderr. To rebuild the
+artifact from the committed dataset — roughly one minute for the 102-fold OOF loop plus the
+final fit — run:
+
+```bash
+python src/export_model.py
+```
+
+`export_model.py` verifies the calibrated CSV against its recorded SHA256 and counts before
+training; a different dataset is rejected rather than silently accepted. Input requirements
+and caveats for `predict.py` are documented in
+[Current Results](#current-results) and [`docs/PROJECT_STATUS.md`](docs/PROJECT_STATUS.md) §23.
+
 All test scripts **exit `0` only when every check passes**, and all outputs are written to
 `results/` (dataset stage outputs go to `results/dataset/`).
 
@@ -802,7 +950,7 @@ in this repository should be read as experimentally validated structure or funct
 
 ## Limitations and Future Work
 
-### Completed (Stages 1–10.3)
+### Completed (Stages 1–11)
 
 Protein data retrieval (AlphaFold Server reference structure; 7 curated AlphaFold DB entries),
 structure validation (checksums, sequence matching, PAE shape), residue-level feature extraction
@@ -821,10 +969,13 @@ by a pre-declared rule; 55,503 × 21 with six OOF score columns; independent ver
 isotonic/sigmoid calibration improves Brier/ECE but not ranking), and the Stage 10.3 directed
 tuning + golden selection (101 unique configurations across XGBoost, LightGBM, and Random
 Forest; imbalance strategies compared; golden LightGBM `lgbm__032c38ffe37f` at median PR 0.1693 /
-pooled gain 6.63x, with nested LOGO-CV at 0.1550 / 4.55x). Details and evidence in
+pooled gain 6.63x, with nested LOGO-CV at 0.1550 / 4.55x), and the Stage 11 production artifact +
+inference CLI (golden model retrained on all 55,503 rows; sigmoid calibrator fitted on OOF scores,
+Brier 0.016072 / ECE 0.000811; 157,432-byte joblib with SHA256; P02144 and P00520 inference tested
+from UniProt, local CIF, and local PDB with identical results). Details and evidence in
 [Current Results](#current-results),
 [`docs/BENCHMARK_DATASET_LOCK.md`](docs/BENCHMARK_DATASET_LOCK.md), and
-[`docs/PROJECT_STATUS.md`](docs/PROJECT_STATUS.md) §16–§22.
+[`docs/PROJECT_STATUS.md`](docs/PROJECT_STATUS.md) §16–§23.
 
 ### Not yet completed
 
@@ -834,8 +985,9 @@ None of the following exist yet, and none are claimed:
   proteins; Stage 9.5 on 102; Stage 10.1/10.2 on 102 with 16 features; Stage 10.3 with tuned
   configurations on the same 102 proteins). Stage 8.2 pooled ROC-AUC is close to random; the
   Stage 10.3 golden LightGBM reaches 0.8131 pooled ROC / 0.8411 median ROC, but only 0.7709
-  within-protein and has no external validation. No model is claimed to predict protein function
-  in general.
+  within-protein and has no external validation. Stage 11 makes that model runnable but adds no
+  new evidence: it was trained on all 102 proteins, and its calibrator was fitted on the same
+  proteins' OOF scores. No model is claimed to predict protein function in general.
 - **Molecular docking, molecular dynamics, compound screening.** No such analysis exists in this
   project.
 - **Experimental validation.** No wet-lab work, and the predictions have not been compared
@@ -903,6 +1055,21 @@ None of the following exist yet, and none are claimed:
   comparable to the Stage 10.2 calibrated scores (Brier 0.0163, ECE 0.0016); no calibration layer
   was refit in Stage 10.3, and Stage 10.2 already showed that calibration changes scale, not
   ranking.
+- **Stage 11 is deployment, not validation.** The final artifact is trained on all 55,503 rows,
+  so its in-sample scores (sigmoid Brier 0.014528) are a sanity check only. The deployed sigmoid
+  is fitted on OOF scores from the same 102 proteins, not on unseen proteins; its OOF Brier
+  0.016072 / ECE 0.000811 are calibration-fit diagnostics, not a held-out performance estimate.
+  The default 0.5 `predicted_active_binding` threshold is a display convention with no
+  biological validation — P02144 and P00520 receive zero positive calls at that threshold
+  (maximum calibrated probabilities 0.1471 and 0.1548). The artifact is a Python joblib/pickle
+  file and should only be loaded from a trusted source.
+- **Stage 11 input support is narrow.** `predict.py` requires an N×N PAE matrix, pLDDT stored in
+  the B-factor column in [0, 100], one chain (or an explicit `--chain`), residue numbering exactly
+  1..N, and no insertion codes. HETATM and non-blank/non-A altlocs are skipped; a residue with no
+  Cα neighbor within 12 Å is an error rather than an imputed value. Experimental PDB structures
+  generally lack compatible PAE/pLDDT and are unsupported. Local files are assumed to come from
+  the same AlphaFold prediction as their PAE; provenance cannot be verified. AFDB versions other
+  than v6 trigger a distribution-shift warning.
 - **Imbalance conclusions depend on the metric.** Large `scale_pos_weight` values raise median
   per-protein PR (to roughly 0.13) while lowering pooled PR (to roughly 0.086–0.094),
   between-protein AUC, and calibration; unweighted training gives the best pooled PR/Brier at
@@ -937,10 +1104,15 @@ None of the following exist yet, and none are claimed:
    selection; test probability calibration on truly unseen proteins; include within-protein and
    median per-protein metrics rather than relying on pooled ROC; and confirm that the tuned
    LightGBM still beats an untuned baseline out of sample.
-6. **Pin ML dependencies** (`scikit-learn`, `xgboost`, `lightgbm`, `scipy`, `numpy`, `pandas`)
-   before running experiments from a clean checkout.
+6. **Finish pinning ML dependencies.** Stage 11 pins `scikit-learn==1.9.1`, `lightgbm==4.6.0`,
+   `scipy==1.18.1`, and `joblib==1.6.0` in `requirements.txt`; `xgboost`, `numpy`, and `pandas`
+   still have version ranges and should be pinned before running from a clean checkout.
 7. **Evaluate broader label policies** (GO terms, EC numbers) only after the expanded dataset
    exists; the current A+B benchmark must remain comparable.
+8. **Treat the Stage 11 artifact as a candidate deployment.** Only promote it after external
+   validation and a calibration fit on unseen proteins; do not describe its outputs as
+   validated Active/Binding Site predictions. Re-export the artifact whenever the dataset,
+   feature contract, or dependency pins change, and record the new SHA256.
 
 ## Computing Resources and Research Support
 
@@ -955,8 +1127,10 @@ CSV and re-running LOGO-CV with 16 features; and Stage 10.2 computed four radii 
 proteins and ran 102 outer LOGO folds with an inner 3-fold calibrator for each of two models and
 two calibration methods, producing a 9.7 MB CSV; and Stage 10.3 evaluated 101 unique
 configurations over 102 LOGO folds plus a nested 102 × 5 run, using single-threaded
-XGBoost/LightGBM for determinism and producing only JSON/NPZ evaluation artifacts. All were
-processed end-to-end on a standard machine with plain Python
+XGBoost/LightGBM for determinism and producing only JSON/NPZ evaluation artifacts; and Stage 11
+re-ran the 102-fold golden OOF (~54 s), fitted two calibrators, trained the final model, and
+produced a 157 KB artifact plus per-residue inference over two proteins (154 and 1,123 residues).
+All were processed end-to-end on a standard machine with plain Python
 libraries (Biopython, pandas, NumPy, scikit-learn, XGBoost, LightGBM, matplotlib). **No GPU or
 HPC resource
 is required to run or reproduce the current pipeline** — a laptop suffices.
@@ -995,7 +1169,7 @@ a technical guide to Biopython's role in modern bioinformatics and AI4Bio.
 
 | Document | Contents |
 |---|---|
-| [`docs/PROJECT_STATUS.md`](docs/PROJECT_STATUS.md) | Single source of truth for project status; §16–§22 contain the Stage 9.2, 9.3, 9.4, 9.5, 10.1, 10.2, and 10.3 audits |
+| [`docs/PROJECT_STATUS.md`](docs/PROJECT_STATUS.md) | Single source of truth for project status; §16–§23 contain the Stage 9.2, 9.3, 9.4, 9.5, 10.1, 10.2, 10.3, and 11 audits (with §24 as the next-step recommendation) |
 | [`docs/BENCHMARK_DATASET_LOCK.md`](docs/BENCHMARK_DATASET_LOCK.md) | Frozen benchmark contract, label policy, fold map, and Stage 8.2 metrics |
 | [`docs/DATASET_PLAN.md`](docs/DATASET_PLAN.md) | Dataset source plan and candidate selection |
 | [`docs/TAHAP_5_AFDB_DOWNLOAD_REPORT.md`](docs/TAHAP_5_AFDB_DOWNLOAD_REPORT.md) | Stage 5 download and integrity report |
@@ -1021,8 +1195,11 @@ DeepMind, and UniProt. The repository's own code does not declare a license yet.
   D439–D444 (2022). [doi:10.1093/nar/gkab1061](https://doi.org/10.1093/nar/gkab1061)
 
 **Built with** [Biopython](https://biopython.org/), [pandas](https://pandas.pydata.org/),
-[NumPy](https://numpy.org/), and [matplotlib](https://matplotlib.org/). Test suites are
-plain-Python self-checks — there is no CI pipeline and no release process yet.
+[NumPy](https://numpy.org/), [matplotlib](https://matplotlib.org/), and — for the Stage 10/11
+models and artifact — [scikit-learn](https://scikit-learn.org/),
+[LightGBM](https://lightgbm.readthedocs.io/), [SciPy](https://scipy.org/), and
+[joblib](https://joblib.readthedocs.io/). Test suites are plain-Python self-checks — there is
+no CI pipeline and no release process yet.
 
 ---
 

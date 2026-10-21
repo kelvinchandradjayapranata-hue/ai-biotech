@@ -7,3 +7,9 @@ matplotlib>=3.8
 # ---- Untuk menjalankan notebook (kernel + eksekusi headless) ----
 ipykernel>=6.29
 nbclient>=0.10
+
+# ---- Stage 11: export artefak + inferensi (dipin agar pickle/joblib kompatibel) ----
+scikit-learn==1.9.1
+lightgbm==4.6.0
+scipy==1.18.1
+joblib==1.6.0

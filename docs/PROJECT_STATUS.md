@@ -9,9 +9,10 @@ diubah, tidak ada eksperimen baru dijalankan, tidak ada unduhan dilakukan.
 
 ```
 PROJECT STATUS:
-STAGE 1–10.3 AUDITED — STAGE 8.2 BENCHMARK LOCKED
+STAGE 1–11 AUDITED — STAGE 8.2 BENCHMARK LOCKED
 DATA PIPELINE: VALIDATED
 BIOLOGICAL ML: BASELINE REPRODUCED — NO GENERALIZATION CLAIM
+PRODUCTION ARTIFACT: EXPORTED + INFERENCE CLI TESTED — NOT EXTERNALLY VALIDATED
 ```
 
 > **Update 2026-10-20.** Stage 7 (dataset & label) dan Stage 8.2 (LOGO-CV baseline)
@@ -141,9 +142,28 @@ BIOLOGICAL ML: BASELINE REPRODUCED — NO GENERALIZATION CLAIM
 > adalah skor mentah model. Nama "Stage 10.3" di sini adalah tuning internal, bukan validasi
 > eksternal yang sebelumnya direncanakan (D14). Rincian di §22.
 >
+> **Update 2026-10-21 — Stage 11.** Golden LightGBM `lgbm__032c38ffe37f` dilatih pada seluruh
+> **55.503 baris / 102 protein** dataset terkalibrasi, lalu disimpan bersama dua kalibrator ke
+> `results/models/golden_lightgbm_12a.joblib` (**157.432 B**, SHA256
+> `98c86efbebcb7e7986921386a07ca76319c453536dd8e4a2afd2a9b8085445da`). OOF Stage 10.3
+> direproduksi ulang dengan selisih maksimum **0,0** sebelum kalibrator di-fit. Sigmoid
+> (deployed, dipilih sebelum evaluasi karena rank-preserving dan tanpa tie) memberi Brier
+> **0,016072** / ECE **0,000811** / mean predicted **0,017206** pada skor OOF; isotonic
+> pembanding memberi Brier 0,015955 tetapi hanya 45 nilai unik dari 55.503 skor. Artefak
+> menyimpan model, sigmoid + isotonic, 16 nama fitur, parameter, metadata dataset, metrik OOF,
+> feature importance, limitations, dan environment. CLI baru `src/predict.py` menerima
+> `--uniprot` atau `--structure` + `--pae`, menghitung ulang 16 fitur (termasuk radius 12 Å),
+> dan mengeluarkan probabilitas per-residu terkalibrasi. Diuji pada **P02144** (154 residu;
+> CIF lokal, PDB lokal, unduhan AFDB, dan cache — output numerik identik; paritas fitur vs
+> dataset maksimum 3,55e-15, **0 nilai > 1e-12**, probabilitas model identik bit) dan
+> **P00520** (1.123 residu); error path PAE hilang dan multi-chain menghasilkan exit 2.
+> Ambang 0,5 hanya tampilan: kedua protein mendapat 0 panggilan (maksimum 0,1471 / 0,1548).
+> Kalibrator di-fit pada OOF protein yang sama dan model final melihat seluruh label training;
+> **tidak ada validasi eksternal**. Rincian di §23.
+>
 > Bagian 1, 2, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20 (Stage 10.1), 21 (Stage 10.2),
-> 22 (Stage 10.3, baru), dan 23 di bawah sudah diperbarui; bagian 3–8 tetap merupakan catatan
-> historis Stage 1–6.
+> 22 (Stage 10.3), 23 (Stage 11, baru), 24 (rekomendasi, renumber), dan Appendix sudah
+> diperbarui; bagian 3–8 tetap merupakan catatan historis Stage 1–6.
 
 ---
 
@@ -236,6 +256,16 @@ Yang **sudah tercapai** dan terverifikasi:
   LOGO-CV (inner `GroupKFold(5)`) menurunkan median PR ke 0,1550 dan pooled gain ke 4,55×,
   mengukur optimisme seleksi. Tidak ada dataset baru, tidak ada kalibrasi ulang, dan tetap
   **bukan** validasi eksternal (§22).
+- **Stage 11:** ekspor artefak produksi + CLI inferensi mandiri. Golden LightGBM dilatih pada
+  seluruh **55.503 baris / 102 protein**; sigmoid di-fit pada skor OOF (Brier **0,016072**,
+  ECE **0,000811**, mean predicted **0,017206** vs prevalensi 0,017206), dan model + dua
+  kalibrator + kontrak 16 fitur disimpan ke
+  `results/models/golden_lightgbm_12a.joblib` (**157.432 B**, SHA256
+  `98c86efbebcb7e7986921386a07ca76319c453536dd8e4a2afd2a9b8085445da`). `src/predict.py`
+  menerima UniProt atau CIF/PDB lokal + PAE, menghitung 16 fitur, dan menghasilkan probabilitas
+  per-residu terkalibrasi. Diuji pada P02144 (154 residu) dan P00520 (1.123 residu) tanpa
+  error; paritas fitur P02144 maksimum 3,55e-15 dengan **0 nilai > 1e-12**, dan probabilitas
+  model identik bit. Ini **deployment, bukan validasi eksternal** (§23).
 
 Yang **BELUM tercapai** (dan tidak diklaim):
 
@@ -259,8 +289,9 @@ Yang **BELUM tercapai** (dan tidak diklaim):
   independen. Stage 10.2 menguji kalibrasi isotonic/sigmoid secara out-of-fold pada 102
   protein yang sama, bukan kalibrasi pada protein eksternal. Stage 9.4/9.5 adalah
   pembesaran/pembersihan dataset, Stage 10.1 adalah feature engineering, Stage 10.2
-  adalah sweep radius + kalibrasi internal, dan Stage 10.3 adalah tuning hiperparameter +
-  pemilihan golden model pada protein yang sama; kelimanya **bukan** validasi eksternal.
+  adalah sweep radius + kalibrasi internal, Stage 10.3 adalah tuning hiperparameter +
+  pemilihan golden model, dan Stage 11 adalah ekspor artefak + kalibrasi pada OOF yang sama —
+  semuanya **bukan** validasi eksternal.
 - **Label masih terbatas pada A+B.** Belum ada label multi-kelas, GO terms, EC numbers,
   atau skema label alternatif.
 - **Stage 9.2, 9.3, 9.4, 9.5, 10.1, 10.2, dan 10.3 bukan validasi eksternal dan bukan
@@ -271,8 +302,10 @@ Yang **BELUM tercapai** (dan tidak diklaim):
   berubah hanya konfigurasi model — dan pooled ROC tetap dipengaruhi perbedaan skor
   antar-protein. Kalibrasi Stage 10.2 hanya memperbaiki skala probabilitas, bukan
   peringkat; Stage 10.3 tidak mengulang kalibrasi, sehingga Brier/ECE-nya adalah skor
-  mentah (0,0520/0,1228) dan tidak sebanding dengan skor terkalibrasi Stage 10.2. Belum
-  ada holdout eksternal.
+  mentah (0,0520/0,1228) dan tidak sebanding dengan skor terkalibrasi Stage 10.2. Stage 11
+  mengekspor model dan mem-fit sigmoid pada OOF, tetapi itu tetap **in-sample calibration
+  fit** pada 102 protein yang sama; model final melihat seluruh label training. Belum ada
+  holdout eksternal.
 - **P11532 sudah dikeluarkan, bukan diperbaiki.** Tidak ada entri AFDB full-length
   kanonik untuk P11532 (hanya 14 isoform; §18.3), sehingga Stage 9.5 menyelesaikannya
   dengan **exclusion**. Rebuild dari sumber struktur full-length tetap belum dilakukan;
@@ -282,18 +315,19 @@ Yang **BELUM tercapai** (dan tidak diklaim):
 Posisi jujur: **infrastruktur data selesai dan tervalidasi; benchmark ML baseline sudah
 ada dan terverifikasi, ditambah ekspansi/realignment Stage 9.2–9.3, production scaling
 Stage 9.4 (103 protein), pembersihan Stage 9.5 (102 protein, P11532 dikeluarkan), feature
-engineering spasial Stage 10.1, sweep radius + kalibrasi out-of-fold Stage 10.2, dan tuning
-hiperparameter + pemilihan golden model Stage 10.3 yang nyata dan diaudit — tetapi belum ada
-bukti generalisasi biologis.** Dataset Stage 10.2 memakai radius 12 Å yang dipilih lewat
-aturan pra-deklarasi dan meningkatkan metrik internal lebih lanjut (within-protein z-scored
-ROC 0,7495 XGB / 0,7338 RF). Stage 10.3 menaikkan median PR golden LightGBM ke 0,1693 dan
-within-z ke 0,7709 pada 102 protein yang sama, tetapi nested LOGO-CV menurunkan median PR
-ke 0,1550 dan pooled gain ke 4,55× — bukti bahwa sebagian kenaikan berasal dari optimisme
-seleksi. Kalibrasi isotonic/sigmoid berhasil memperbaiki skala probabilitas absolut (ECE
-0,357 → 0,002), tetapi tidak memperbaiki diskriminasi peringkat atau inflasi antar-protein;
-Stage 10.3 tidak mengulang kalibrasi. Pooled ROC masih dipengaruhi perbedaan antar-protein,
-dan tidak ada holdout eksternal. Fokus berikutnya adalah validasi eksternal pada protein
-baru — bukan mengklaim performa.
+engineering spasial Stage 10.1, sweep radius + kalibrasi out-of-fold Stage 10.2, tuning
+hiperparameter + pemilihan golden model Stage 10.3, dan ekspor artefak + CLI inferensi Stage 11
+yang nyata dan diaudit — tetapi belum ada bukti generalisasi biologis.** Dataset Stage 10.2
+memakai radius 12 Å yang dipilih lewat aturan pra-deklarasi dan meningkatkan metrik internal
+lebih lanjut (within-protein z-scored ROC 0,7495 XGB / 0,7338 RF). Stage 10.3 menaikkan median
+PR golden LightGBM ke 0,1693 dan within-z ke 0,7709 pada 102 protein yang sama, tetapi nested
+LOGO-CV menurunkan median PR ke 0,1550 dan pooled gain ke 4,55× — bukti bahwa sebagian
+kenaikan berasal dari optimisme seleksi. Kalibrasi isotonic/sigmoid berhasil memperbaiki skala
+probabilitas absolut (ECE 0,357 → 0,002), tetapi tidak memperbaiki diskriminasi peringkat atau
+inflasi antar-protein. Stage 11 mem-fit sigmoid pada OOF dan mengekspornya bersama model final
+yang dilatih pada seluruh baris; ini membuat inferensi reproducible, bukan tervalidasi. Pooled
+ROC masih dipengaruhi perbedaan antar-protein, dan tidak ada holdout eksternal. Fokus
+berikutnya adalah validasi eksternal pada protein baru — bukan mengklaim performa.
 
 ---
 
@@ -315,6 +349,7 @@ baru — bukan mengklaim performa.
 | Spatial feature dataset (Stage 10.1) | **AUDITED — 55.503 × 15, 0 NaN** | 3 fitur radius 8,0 Å; 102 protein; 955 positif; 78 fold evaluable; XGB median ROC 0,7786, pooled 0,7676 / 0,0759 / 4,41×; RF median 0,7724, pooled 0,7568 / 0,0668 / 3,88×; within-protein 0,7156/0,7059; 166.509 nilai baru diverifikasi ulang, 0 mismatch (§20) |
 | Radius sweep & calibrated dataset (Stage 10.2) | **AUDITED — 55.503 × 21, 0 NaN** | Radius 6/8/10/12 Å; **12 Å terpilih**; 78 fold evaluable; XGB median ROC 0,8120, pooled 0,7956 / 0,0881 / 5,12×; RF median 0,8089, pooled 0,7759 / 0,0711 / 4,13×; within-protein 0,7495/0,7338; Friedman p < 1,5e-06; kalibrasi isotonic/sigmoid memperbaiki Brier/ECE tetapi tidak memperbaiki pooled/within dan tidak menutup gap antar-protein; 6 kolom OOF diverifikasi, 0 mismatch (§21) |
 | Tuning & golden model (Stage 10.3) | **AUDITED — 101 KONFIGURASI, GOLDEN LIGHTGBM** | 102-fold LOGO-CV / 78 evaluable; 16 fitur latih; XGB 44 + LGBM 46 + RF 8 konfigurasi (+3 re-eval konfigurasi seleksi-pass); golden `lgbm__032c38ffe37f`: median ROC 0,8411 / PR 0,1693, pooled ROC 0,8131 / PR 0,1142 / gain 6,63×, within-z 0,7709, Brier 0,0520, ECE 0,1228; nested LOGO-CV median PR 0,1550 / gain 4,55×; bukan validasi eksternal (§22) |
+| Artefak produksi & CLI inferensi (Stage 11) | **TESTED — JOBLIB + CLI, BUKAN VALIDASI EKSTERNAL** | Model dilatih pada 55.503 baris / 102 protein; OOF Stage 10.3 direproduksi (selisih maks 0,0); sigmoid OOF Brier 0,016072 / ECE 0,000811 / mean 0,017206 vs prevalensi 0,017206; isotonic pembanding 0,015955 tetapi 45 nilai unik; artefak 157.432 B, SHA256 `98c86efb…45da`; CLI P02144/P00520 exit 0; paritas fitur P02144 0 nilai > 1e-12, probabilitas identik bit; ambang 0,5 tidak tervalidasi (§23) |
 | Klaim ilmiah/biologis | **TIDAK ADA (sengaja)** | Semua laporan menyatakan fitur = prediksi model; baseline bukan klaim fungsi |
 
 Ringkas: **A/B/C tercapai; D ada sebagai baseline terverifikasi tetapi belum
@@ -442,6 +477,8 @@ menunjukkan generalisasi; E/F/G tetap belum dan diakui eksplisit** (lihat bagian
 | 9.5 — Dataset cleansing & isoform resolution | AUDITED (2026-10-20) | 55.503 × 12; 102 protein; 955 positif (1,72%); P11532 dikeluarkan; 0 sel kosong/unmodeled; 78 fold evaluable; XGB median ROC 0,7371, pooled 0,7476 / 0,0640 (3,72×); RF median ROC 0,7330, pooled 0,7476 / 0,0608 (3,53×); SHA256 `e47b3635…05a3` | `results/dataset/production_dataset_100_cleaned.csv`, §19 | Dataset produksi bersih; pooled ROC XGB turun karena artefak P11532 hilang; within-protein tetap ~0,689; **bukan** bukti generalisasi |
 | 10.1 — Spatial neighborhood features | AUDITED (2026-10-20) | 55.503 × 15; 102 protein; 955 positif; 3 fitur radius 8,0 Å; 0 NaN; 78 fold evaluable; XGB median ROC 0,7786, pooled 0,7676 / 0,0759 (4,41×); RF median ROC 0,7724, pooled 0,7568 / 0,0668 (3,88×); within-protein 0,7156/0,7059; SHA256 `8e215340…3319` | `results/dataset/production_dataset_100_spatial.csv`, §20 | Fitur spasial menaikkan metrik internal termasuk within-protein; tetap **bukan** validasi eksternal dan **bukan** bukti generalisasi |
 | 10.2 — Multi-radius sweep & OOF calibration | AUDITED (2026-10-20) | 55.503 × 21; 102 protein; 955 positif; radius 6/8/10/12 Å, **12 Å terpilih**; 78 fold evaluable; XGB median ROC 0,8120, pooled 0,7956 / 0,0881 (5,12×); RF median ROC 0,8089, pooled 0,7759 / 0,0711 (4,13×); within-protein 0,7495/0,7338; kalibrasi isotonic/sigmoid: Brier XGB 0,1820 → 0,0163, ECE 0,3569 → 0,0016, tetapi pooled/within turun tipis; SHA256 `2c4bcb3d…ea3a` | `results/dataset/production_dataset_100_calibrated.csv`, §21 | Sweep radius menaikkan metrik internal; kalibrasi memperbaiki skala absolut tetapi **tidak** diskriminasi atau inflasi antar-protein; tetap **bukan** validasi eksternal |
+| 10.3 — Hyperparameter tuning & golden model | AUDITED (2026-10-21) | 101 konfigurasi unik; 102 fold / 78 evaluable; 16 fitur; golden LGBM `lgbm__032c38ffe37f`: median ROC 0,8411 / PR 0,1693, pooled ROC 0,8131 / PR 0,1142 (6,63×), within-z 0,7709, Brier 0,0520, ECE 0,1228 (mentah); nested median PR 0,1550 / gain 4,55× | Tidak ada dataset baru; artefak evaluasi di luar repo, §22 | Tuning internal pada 102 protein yang sama; **bukan** validasi eksternal dan tidak mengubah klaim generalisasi |
+| 11 — Artefak produksi & CLI inferensi | TESTED (2026-10-21) | Model dilatih 55.503 baris / 102 protein; OOF identik (selisih 0,0); sigmoid OOF Brier 0,016072 / ECE 0,000811 / mean 0,017206; isotonic 0,015955 (45 nilai unik); artefak 157.432 B SHA256 `98c86efb…45da`; CLI P02144/P00520 exit 0; paritas fitur P02144 0 nilai > 1e-12 | `results/models/golden_lightgbm_12a.joblib`, `src/export_model.py`, `src/predict.py`, §23 | Deployment reproducible + kalibrasi in-sample; **bukan** validasi eksternal; ambang 0,5 hanya tampilan |
 
 **Batas tegas antar baris:** sampai Stage 6, semua capaian bersifat
 **engineering + integritas data + ekstraksi fitur**. Stage 7 menambahkan **benchmark
@@ -452,9 +489,11 @@ merekonstruksinya dengan **definisi fitur frozen**; Stage 9.4 memperbesar skala 
 P11532 dan menghasilkan dataset **102 protein / 55.503 residu** yang lengkap tanpa sel
 kosong; Stage 10.1 menambahkan tiga fitur lingkungan spasial radius 8,0 Å dan
 mengevaluasi ulang LOGO-CV; Stage 10.2 melakukan sweep empat radius, memilih 12 Å dengan
-aturan pra-deklarasi, lalu menguji kalibrasi isotonic/sigmoid out-of-fold. Tidak satu pun
-dari Stage 9.2–10.2 menjadi benchmark terkunci atau mengubah status generalisasi. Tidak ada
-satu pun baris di tabel ini yang merupakan klaim biologis atau bukti generalisasi.
+aturan pra-deklarasi, lalu menguji kalibrasi isotonic/sigmoid out-of-fold; Stage 10.3 men-tuning
+model dan memilih golden LightGBM; Stage 11 mengekspor model + kalibrator dan menambahkan CLI
+inferensi. Tidak satu pun dari Stage 9.2–11 menjadi benchmark terkunci atau mengubah status
+generalisasi. Tidak ada satu pun baris di tabel ini yang merupakan klaim biologis atau bukti
+generalisasi.
 
 ---
 
@@ -485,6 +524,7 @@ satu pun baris di tabel ini yang merupakan klaim biologis atau bukti generalisas
 | `results/dataset/` | **`production_dataset_100_cleaned.csv`** — Stage 9.5 cleaned dataset, P11532 dikeluarkan (**55.503 × 12**, 102 protein, 955 positif), SHA256 `e47b3635…05a3`, LF | 4.457.124 B |
 | `results/dataset/` | **`production_dataset_100_spatial.csv`** — Stage 10.1 cleaned dataset + 3 fitur spasial radius 8,0 Å (**55.503 × 15**, 102 protein, 955 positif), 0 NaN, SHA256 `8e215340…3319`, LF | 5.313.161 B |
 | `results/dataset/` | **`production_dataset_100_calibrated.csv`** — Stage 10.2 features radius 12 Å + 6 kolom skor OOF raw/isotonic/sigmoid (**55.503 × 21**, 102 protein, 955 positif), 0 NaN, SHA256 `2c4bcb3d…ea3a`, LF | 9.667.972 B |
+| `results/models/` | **`golden_lightgbm_12a.joblib`** — Stage 11.1 artefak: LightGBM golden, sigmoid + isotonic, 16 nama fitur, parameter, metadata dataset, metrik OOF/in-sample, feature importance, environment; SHA256 `98c86efb…45da` | 157.432 B |
 | `docs/` | **`BENCHMARK_DATASET_LOCK.md`** — kontrak benchmark: skema, label A+B, fold map, protokol & metrik Stage 8.2, kebijakan freeze | — |
 | `results/` | `01_first_protein_analysis.executed.ipynb`, `notebook_plot_1.png` | output notebook |
 | `notebooks/` | `01_first_protein_analysis.ipynb` | materi pembelajaran |
@@ -504,7 +544,11 @@ seluruh baris dicocokkan ulang dengan dataset sebelum fitur ditulis (§20.3, §2
 Empat CSV fitur radius 6/8/10/12 Å disimpan di area audit temporer
 (`stage102_audit/data`), bukan di tracked tree; hanya CSV terkalibrasi yang dipromosikan.
 Audit independen Stage 9.2–9.4 dibahas di §16–§18; verifikasi Stage 9.5 di §19; Stage
-10.1 di §20; Stage 10.2 di §21.
+10.1 di §20; Stage 10.2 di §21; Stage 10.3 di §22; Stage 11 di §23. Stage 11 tidak membuat
+dataset baru: `export_model.py` hanya membaca `production_dataset_100_calibrated.csv` dan
+menulis artefak ke `results/models/`. `predict.py --uniprot` mengunduh CIF + PAE AFDB ke cache
+OS (atau `--cache-dir`); cache dan file uji P02144/P00520 berada di area temporer, bukan
+tracked tree. `download/` tetap tidak berisi CIF/PAE.
 
 ### 10.3 Script
 
@@ -520,16 +564,20 @@ Audit independen Stage 9.2–9.4 dibahas di §16–§18; verifikasi Stage 9.5 di
 | `src/test_afdb_download.py` | Test Stage 5 — 16 check |
 | `src/extract_multi_protein_features.py` | Ekstraksi fitur multi-protein (Stage 6) |
 | `src/test_multi_protein_features.py` | Test Stage 6 — 24 check |
+| `src/inference_features.py` | Stage 11 — kontrak 16 fitur, parser CIF/PDB/PAE, fetch + verifikasi AFDB, cache |
+| `src/export_model.py` | Stage 11.1 — validasi dataset, reproduksi OOF, fit sigmoid/isotonic, latih final model, tulis joblib |
+| `src/predict.py` | Stage 11.2 — CLI inferensi per-residu (UniProt atau struktur lokal + PAE) |
 
-**Tidak ada script ML di `src/`.** Baseline Stage 8.2, evaluasi Stage 9.x, ekstraksi fitur
-spasial Stage 10.1, sweep radius/kalibrasi Stage 10.2, dan tuning + pemilihan golden model
-Stage 10.3 dijalankan dengan harness verifikasi eksternal (temporary, di luar repo); belum
-ada training/extractor/tuning script yang di-commit. Tidak ada PyTorch/TensorFlow/CUDA.
-Environment: `.venv` Python **3.12.10**; `requirements.txt` hanya biopython, pandas,
-numpy, matplotlib, ipykernel, nbclient. Verifikasi Stage 8.2 dan Stage 10.3 memakai
-scikit-learn 1.9.1, xgboost 3.4.1, lightgbm 4.6.0, scipy 1.18.1, pandas 3.0.6, dan numpy
-2.5.4 yang dipasang sementara di luar `.venv` — **belum** dipin di `requirements.txt`
-(lihat `BENCHMARK_DATASET_LOCK.md` §8).
+**Script ML pertama di `src/` baru ada di Stage 11.** Baseline Stage 8.2, evaluasi Stage 9.x,
+ekstraksi fitur spasial Stage 10.1, sweep radius/kalibrasi Stage 10.2, dan tuning + pemilihan
+golden model Stage 10.3 masih dijalankan dengan harness verifikasi eksternal (temporary, di luar
+repo). Stage 11 meng-commit tiga script produksi: `inference_features.py`, `export_model.py`,
+dan `predict.py`. Tidak ada PyTorch/TensorFlow/CUDA. Environment: `.venv` Python **3.12.10**;
+`requirements.txt` kini memuat biopython, pandas, numpy, matplotlib, ipykernel, nbclient, plus
+pin Stage 11 `scikit-learn==1.9.1`, `lightgbm==4.6.0`, `scipy==1.18.1`, dan `joblib==1.6.0`.
+Verifikasi Stage 8.2 dan Stage 10.3 memakai scikit-learn 1.9.1, xgboost 3.4.1, lightgbm 4.6.0,
+scipy 1.18.1, pandas 3.0.6, dan numpy 2.5.3/2.5.4; `xgboost`, `numpy`, dan `pandas` masih berupa
+rentang versi, bukan pin eksak (lihat `BENCHMARK_DATASET_LOCK.md` §8).
 
 ### 10.4 SHA256 terverifikasi (top-level)
 
@@ -556,6 +604,9 @@ e47b3635a7e904107094afde02a1ece656e25491c8721865501b6a76562b05a3  results/datase
 2c4bcb3da7dfe4de82a95902f6fa3156e656cb5aece521b54d427cb42220ea3a  results/dataset/production_dataset_100_calibrated.csv
 
 # Stage 10.3 (2026-10-21): tidak ada dataset baru; hash calibrated di atas diverifikasi ulang
+
+# Stage 11.1 (2026-10-21): artefak model + kalibrator
+98c86efbebcb7e7986921386a07ca76319c453536dd8e4a2afd2a9b8085445da  results/models/golden_lightgbm_12a.joblib
 
 # Output Stage 6 (cocok dengan docs/TAHAP_6_MULTI_PROTEIN_FEATURE_REPORT.md §6)
 390462a42d8befe5588b1019d51b4c4282433b0f712c4377e5191883983d3c1d  multi_protein_residue_features.csv
@@ -634,6 +685,21 @@ Klaim yang **didukung bukti** di project ini:
     RF 0,7870 → 0,7847 / 0,7839). Artinya **score inflation
     antar-protein adalah masalah peringkat/skor rata-rata protein, bukan masalah kalibrasi
     skala**; kalibrasi tidak boleh diklaim sebagai perbaikan generalisasi (§21.5–§21.7).
+11. **Stage 10.3 memilih golden LightGBM secara internal, dengan optimisme seleksi yang
+    terukur.** Dari 101 konfigurasi unik, `lgbm__032c38ffe37f` memberi median ROC 0,8411 / PR
+    0,1693 dan pooled ROC 0,8131 / PR 0,1142 / gain 6,63× pada 78 fold evaluable. Nested
+    LOGO-CV menurunkan median PR ke 0,1550 dan pooled gain ke 4,55×; kandidat nested tetap
+    berasal dari tuning global. Brier/ECE golden (0,0520/0,1228) adalah skor mentah, bukan
+    probabilitas terkalibrasi, dan seluruh evaluasi memakai 102 protein yang sama (§22).
+12. **Stage 11 membuktikan artefak dan CLI reproducible, bukan performa biologis.** OOF Stage
+    10.3 direproduksi dengan selisih 0,0; model final dilatih pada 55.503 baris; sigmoid
+    di-fit pada OOF dan memberi Brier 0,016072 / ECE 0,000811 dengan mean predicted 0,017206
+    setara prevalensi. `predict.py` menghasilkan fitur P02144 yang cocok dengan dataset
+    (maksimum 3,55e-15; 0 nilai > 1e-12) dan probabilitas model identik bit, serta berjalan
+    tanpa error pada P02144 dan P00520 dari UniProt, CIF lokal, dan PDB lokal. Ini bukti
+    **reproducibility engineering dan deployment**, bukan validasi eksternal: kalibrator
+    in-sample terhadap protein yang sama, model final melihat semua label, dan ambang 0,5
+    tidak tervalidasi (§23).
 
 **Tidak ada** kesimpulan biologis atau fungsional yang ditarik dari data ini, dan itu
 memang keputusan desain project — lihat bagian 12.
@@ -697,14 +763,16 @@ Status 2026-10-20: benchmark Stage 8.2 tetap terkunci, dan Stage 10.2 belum meng
 generalisasi.
 
 **G. Stage 7 (label A+B) SELESAI; ekspansi protein SELESAI sampai 102 protein;
-feature engineering spasial Stage 10.1 dan sweep radius + kalibrasi Stage 10.2 SELESAI;
-pertanyaan biologis lanjutan BELUM.**
+feature engineering spasial Stage 10.1, sweep radius + kalibrasi Stage 10.2, tuning Stage 10.3,
+dan ekspor artefak + CLI Stage 11 SELESAI; pertanyaan biologis lanjutan BELUM.**
 Stage 7 menetapkan label biner **Active site + Binding site** dan fold LOGO, lalu
 Stage 8.2 menetapkan baseline. Ekspansi 14 → 103 → 102 protein sudah dikerjakan di
 Stage 9.2–9.5, Stage 10.1 menambahkan fitur lingkungan 3D pada dataset 102 protein yang
-sama, dan Stage 10.2 memilih radius 12 Å serta menguji kalibrasi out-of-fold pada protein
-yang sama. Pertanyaan yang lebih luas (GO terms, EC numbers, multi-label) dan validasi
-eksternal **belum** dikerjakan. 102 protein masih terlalu sedikit dan terkorelasi untuk
+sama, Stage 10.2 memilih radius 12 Å serta menguji kalibrasi out-of-fold pada protein yang
+sama, Stage 10.3 men-tuning dan memilih golden LightGBM, dan Stage 11 mengekspor model +
+kalibrator serta menambahkan CLI inferensi. Pertanyaan yang lebih luas (GO terms, EC numbers,
+multi-label) dan validasi eksternal **belum** dikerjakan. Menjalankan `predict.py` pada
+protein baru menghasilkan skor, bukan evaluasi: tanpa label independen, itu bukan validasi. 102 protein masih terlalu sedikit dan terkorelasi untuk
 klasifikasi umum; `DATASET_PLAN.md` §9 masih berupa usulan arah.
 
 Tambahan yang juga **belum** terbukti/dilakukan:
@@ -714,6 +782,9 @@ Tambahan yang juga **belum** terbukti/dilakukan:
 - Tidak ada docking, molecular dynamics, skrining senyawa, atau eksperimen basah.
 - Tidak ada model prediksi fungsi yang tervalidasi/generalisasi; baseline Stage 8.2 bukan
   "penemuan".
+- Tidak ada evaluasi berlabel pada protein baru. Stage 11 hanya mendemonstrasikan bahwa model
+  yang sudah ada dapat dijalankan; P02144 dan P00520 adalah protein training, sehingga skor
+  keduanya **bukan** validasi eksternal.
 
 ---
 
@@ -725,7 +796,7 @@ Diurutkan dari yang paling berdampak pada tahap berikutnya.
 |---|---|---|---|---|
 | C1 | **Skema Stage 6 = 26 fitur, bukan 28.** `contact_prob_sum` & `n_high_conf_contacts` dikeluarkan karena `contact_probs` tidak tersedia di AFDB | Tinggi (mempengaruhi desain fitur ML) | Stage 6 report §5, §10.1 | **SELESAI untuk benchmark:** Stage 7 menetapkan 27 kolom (25 shared + label + fold); Stage 8.2 memakai 13 fitur. Eksperimen fitur lain tetap terbuka |
 | C2 | **Redundansi pLDDT AFDB.** CIF AFDB menulis pLDDT per-residu ke semua atom → di 1098 baris: `plddt_atom_std = 0`, `plddt_atom_mean = min = max = plddt_ca`. 4 kolom `plddt_atom_*` redundan dengan `plddt_ca` | Tinggi (risiko multikolinearitas sempurna bila dipakai ML apa adanya) | Stage 6 report §10.2 | **SELESAI:** 4 kolom `plddt_atom_*` dibuang dari dataset benchmark dan tidak dipakai Stage 8.2 |
-| C3 | **Skala dataset tidak memadai untuk ML.** Benchmark 7 protein / 1098 residu berkorelasi; Stage 9.5/10.1/10.2 berisi 102 protein / 55.503 residu tetapi hanya 955 positif; Stage 10.1 dan 10.2 tidak menambah protein | Tinggi | Stage 4 plan §6, Stage 6 report, §19, §20, §21 | **TETAP:** diakui eksplisit (butir F); benchmark dikunci dan Stage 10.1/10.2 belum menjadi validasi eksternal |
+| C3 | **Skala dataset tidak memadai untuk ML.** Benchmark 7 protein / 1098 residu berkorelasi; Stage 9.5/10.1/10.2/10.3/11 berisi 102 protein / 55.503 residu tetapi hanya 955 positif; Stage 10.1–11 tidak menambah protein | Tinggi | Stage 4 plan §6, Stage 6 report, §19, §20, §21, §22, §23 | **TETAP:** diakui eksplisit (butir F); benchmark dikunci dan Stage 10.1–11 belum menjadi validasi eksternal |
 | C4 | **Belum ada label (y).** Tidak ada target prediksi yang dipilih | Tinggi (blocker untuk ML) | `DATASET_PLAN.md` §9 | **SELESAI:** label A+B (Active site + Binding site), 46 positif, audit 7/7 protein |
 | C5 | **Koordinat mentah tidak invariant rotasi/translasi** (`ca_x/y/z`, `centroid_*`) | Sedang | Stage 3 JSON, `DATASET_PLAN.md` §8 | **DIHINDARI di benchmark:** koordinat tidak dipakai Stage 8.2; tetap ada di CSV beku sebagai dokumentasi |
 | C6 | **Versi AFDB v6 dapat berubah** di masa depan | Sedang (eksternal) | Stage 5 report §14.2 | SHA256 tercatat sebagai titik referensi; perubahan server akan terdeteksi sebagai hash berbeda |
@@ -736,7 +807,7 @@ Diurutkan dari yang paling berdampak pada tahap berikutnya.
 | C11 | **RNase1 memakai prekursor 1–150** (termasuk signal peptide), bukan RNase A mature 124 residu | Rendah | `dataset_manifest.csv` notes, Stage 5 report §14.4 | Tercatat di manifest |
 | C12 | **Ligand/ion/kovalen tidak dimodelkan** (heme pada myoglobin & cytochrome c; Cu/Zn pada SOD1; kromofor GFP terbentuk post-translasi) | Sedang (interpretasi) | `dataset_manifest.csv` notes, `DATASET_PLAN.md` §6 | Tercatat per baris di manifest |
 | C13 | **Provenance gap Stage 7.** Script pembuat `stage7_processed_dataset.csv` tidak ada di `src/`; file datang sebagai artefak dan diaudit ulang terhadap Stage 6 + UniProt | Sedang | `BENCHMARK_DATASET_LOCK.md` §2 | Tercatat; rebuild from source belum one-command |
-| C14 | **Dependensi ML belum dipin.** scikit-learn, xgboost, scipy, dan numpy verifikasi dipasang sementara di luar `.venv`; tidak ada di `requirements.txt` | Sedang (reproducibility) | `BENCHMARK_DATASET_LOCK.md` §8 | Tercatat; keputusan pin dependency = user |
+| C14 | **Dependensi ML belum sepenuhnya dipin.** Stage 11 mem-pin scikit-learn 1.9.1, lightgbm 4.6.0, scipy 1.18.1, dan joblib 1.6.0 di `requirements.txt`; xgboost, numpy, dan pandas masih berupa rentang versi | Sedang (reproducibility) | `BENCHMARK_DATASET_LOCK.md` §8; §10.3 | **SEBAGIAN SELESAI:** pin Stage 11 ditambahkan; xgboost/numpy/pandas masih terbuka |
 | C15 | **Toleransi reproduksi RF.** XGB cocok persis; RF median berbeda ≤0,0011 dan pooled ≤0,0085, konsisten dengan perbedaan versi/implementasi scikit-learn | Rendah | `BENCHMARK_DATASET_LOCK.md` §7.4 | Tercatat; nilai resmi dan perbandingan didokumentasikan |
 | C16 | **Definisi `pae_local_mean_k10` Stage 9.2 menyimpang.** Nilai CSV adalah mean `PAE[i, i-5:i+6]` **termasuk residu sendiri** (jendela ±5), bukan `\|i-j\| ≤ 10, j ≠ i` seperti Stage 3/8.2. Seluruh 3.960 nilai berbeda dari definisi frozen (selisih maks 8,1 Å) | Tinggi (komparabilitas) | Audit Stage 9.2 §16 | **SELESAI di Stage 9.3:** seluruh 3.960 nilai dihitung ulang dengan definisi frozen (0 mismatch). Stage 9.2 tetap disimpan sebagai artefak historis |
 | C17 | **Klasifikasi histidin Stage 9.2 berbeda.** H diberi `amino_acid_type = aromatic` (108 residu), sedangkan tabel frozen Stage 3/8.2 = `basic` | Sedang (fitur one-hot) | Audit Stage 9.2 §16 | **SELESAI di Stage 9.3:** 108 residu H dikembalikan ke `basic`; satu-satunya perubahan kategori vs Stage 9.2 |
@@ -751,6 +822,8 @@ Diurutkan dari yang paling berdampak pada tahap berikutnya.
 | C26 | **`download/` tidak berisi file PDB/CIF/PAE.** Permintaan Stage 10.1 mengasumsikan file struktur ada di `download/`, tetapi folder itu hanya berisi CSV/Markdown/notebook. Ekstraksi memakai cache audit Stage 9.4 di luar tracked tree (102 CIF + 102 PAE + 102 API JSON); tidak ada unduhan baru. | Rendah–sedang (provenance) | Audit Stage 10.1 §20.3, D12 | **TERCATAT:** seluruh 55.503 baris dicocokkan ulang dengan CIF/PAE sebelum fitur ditulis; hash input per protein dicatat di audit JSON temporer. Cache mentah tidak di-commit |
 | C27 | **Kalibrasi tidak memperbaiki inflasi antar-protein.** Isotonic/sigmoid out-of-fold memperbaiki skala absolut secara dramatis (XGB mean predicted 0,3741 → 0,0176; Brier 0,1820 → 0,0163; ECE 0,3569 → 0,0016), tetapi pooled ROC 0,7956 → 0,7900/0,7947, within-protein z-scored ROC 0,7495 → 0,7418/0,7475, dan between-protein AUC hanya bergeser kecil serta tidak konsisten arahnya (XGB 0,7828 → 0,7889/0,7859; RF 0,7870 → 0,7847/0,7839). Urutan rata-rata skor protein hampir tidak berubah (Spearman vs raw 0,9895 isotonic / 0,9955 sigmoid). | Tinggi (interpretasi kalibrasi) | Audit Stage 10.2 §21.5–§21.7 | **TERCATAT:** kalibrasi dilaporkan sebagai perbaikan skala probabilitas, bukan perbaikan diskriminasi atau generalisasi. Metrik within-protein dan between-protein tetap dilaporkan terpisah |
 | C28 | **Enam kolom OOF adalah artefak audit, bukan fitur latih.** `production_dataset_100_calibrated.csv` memuat `oof_{xgb,rf}_{raw,isotonic,sigmoid}`; setiap nilai berasal dari model yang tidak melihat protein baris tersebut, tetapi memakai kolom itu sebagai fitur tanpa nested CV akan menyebabkan leakage. | Tinggi (risiko misuse dataset) | Audit Stage 10.2 §21.4 | **TERCATAT:** header/README menyatakan kolom 16–21 adalah skor OOF; dataset tidak boleh dipakai sebagai feature table tanpa protokol nested CV baru |
+| C29 | **Kalibrator Stage 11 in-sample dan model final melihat seluruh label.** Sigmoid di-fit pada skor OOF 102 protein yang sama yang dipakai memilih fitur/radius/tuning; model final dilatih pada seluruh 55.503 baris. Brier 0,016072 / ECE 0,000811 adalah diagnostik kalibrasi, bukan estimasi performa pada protein baru. Ambang 0,5 tidak tervalidasi; P02144/P00520 mendapat 0 panggilan. | Tinggi (risiko salah tafsir) | Audit Stage 11 §23 | **TERCATAT:** artefak menyimpan `limitations` dan README/docs menyatakan deployment ≠ validasi; gate validasi eksternal tetap terbuka |
+| C30 | **Kontrak input inferensi sempit.** `predict.py` mewajibkan PAE N×N, pLDDT di kolom B-factor [0,100], satu chain (atau `--chain`), penomoran 1..N tanpa insertion code, dan tidak melakukan imputasi; residu tanpa tetangga radius 12 Å = error. PDB eksperimental umumnya tidak didukung. File joblib adalah pickle dan hanya boleh dimuat dari sumber tepercaya; AFDB versi selain v6 memicu warning pergeseran distribusi. | Sedang (batasan penggunaan) | Audit Stage 11 §23 | **TERCATAT:** syarat didokumentasikan di CLI `--help`, README, dan §23; tidak ada klaim dukungan struktur eksperimen |
 
 ---
 
@@ -781,6 +854,9 @@ Diurutkan dari yang paling berdampak pada tahap berikutnya.
 | Reproducibility Stage 10.3 — tuning | **DIHITUNG LANGSUNG; 101 KONFIGURASI** | 102 fold / 78 evaluable; 44 XGB + 46 LGBM + 8 RF (+3 re-eval); LightGBM pass 1 dijalankan ulang penuh dan 23/23 konfigurasi mereproduksi seluruh 8 metrik hingga 1e-12; tiga konfigurasi seleksi-pass (derived) dievaluasi ulang sebagai konfigurasi tetap; environment sama dengan Stage 10.2 |
 | Reproducibility Stage 10.3 — golden | **EVAL ULANG KONFIGURASI TETAP, OOF IDENTIK** | `lgbm__032c38ffe37f`; 102 fold / 78 evaluable; median ROC 0,8411 / PR 0,1693; pooled ROC 0,8131 / PR 0,1142 / gain 6,6345×; within-z 0,7709; Brier 0,0520; ECE 0,1228; OOF 55.503 baris, 0 NaN, 955 positif; perbedaan vs OOF tuning = 0,0 (bit-identik) |
 | Reproducibility Stage 10.3 — nested | **NESTED LOGO-CV, INNER GROUPKFOLD 5** | Outer 102 fold; 4 kandidat (3 efektif unik); median ROC 0,8303 / PR 0,1550; pooled ROC 0,7961 / PR 0,0784 / gain 4,5549×; within-z 0,7680; Brier 0,0340; XGB dipilih 81 fold, LGBM 11+10; kandidat berasal dari tuning global sehingga masih mengandung komponen optimistis |
+| Reproducibility Stage 11 — export | **OOF DIREPRODUKSI, ARTEFAK DIHASH** | 55.503 baris / 102 protein / 955 positif; OOF golden dihitung ulang dengan selisih maksimum 0,0 vs Stage 10.3; dataset divalidasi terhadap SHA256 `2c4bcb3d…ea3a`, 9.667.972 B, 55.503 baris, 102 protein, 955 positif; artefak 157.432 B, SHA256 `98c86efb…45da`; environment Python 3.12.10, numpy 2.5.3, pandas 3.0.6, scikit-learn 1.9.1, lightgbm 4.6.0, scipy 1.18.1, joblib 1.6.0 |
+| Reproducibility Stage 11 — kalibrasi | **FIT PADA OOF, BUKAN HOLDOUT** | Sigmoid (`C=1e6`, lbfgs, max_iter 1000, tol 1e-10) pada logit OOF; koefisien 0,8216068, intercept −2,7257097; Brier 0,016072 / ECE 0,000811 / mean 0,017206 vs prevalensi 0,017206; isotonic pembanding Brier 0,015955 tetapi 45 nilai unik; metrik ini diagnostik in-sample, bukan estimasi protein baru |
+| Reproducibility Stage 11 — CLI | **UJI END-TO-END, 0 ERROR** | P02144 154 residu dari CIF lokal, PDB lokal, unduhan AFDB, dan cache — kolom numerik identik; paritas fitur vs dataset maksimum 3,55e-15 (0 nilai > 1e-12), probabilitas raw/calibrated identik bit; P00520 1.123 residu exit 0; PAE hilang dan multi-chain tanpa `--chain` exit 2; `--chain A` exit 0 |
 
 Catatan: satu-satunya artefak non-deterministik yang diketahui adalah
 `data/alphafold_db/metadata/download_log.txt` (timestamp + path absolut lokal) — file
@@ -790,9 +866,10 @@ log, bukan output dataset, dan tidak dipakai sebagai input analisis.
 
 ## 15. Current Project Position
 
-**Posisi: Stage 10.3 dieksekusi dan diaudit — tuning hiperparameter + perbandingan
-imbalansi pada dataset terkalibrasi 12 Å memilih golden LightGBM `lgbm__032c38ffe37f`;
-benchmark Stage 8.2 tetap terkunci dan tidak berubah.**
+**Posisi: Stage 11 dieksekusi dan diuji — golden LightGBM diekspor bersama kalibrator
+sigmoid ke artefak joblib, dan CLI `predict.py` berjalan end-to-end pada P02144/P00520;
+benchmark Stage 8.2 tetap terkunci dan tidak berubah. Ini deployment, bukan validasi
+eksternal.**
 
 - Stage 1–6 selesai dan terdokumentasi; concern C1, C2, C4, dan C5 sudah ditutup
   untuk benchmark (C3 tetap).
@@ -857,13 +934,33 @@ benchmark Stage 8.2 tetap terkunci dan tidak berubah.**
 - **Kalibrasi tidak diulang di Stage 10.3.** Brier/ECE golden (0,0520/0,1228) adalah skor
   mentah dan tidak sebanding dengan skor terkalibrasi Stage 10.2 (0,0163/0,0016). Stage
   10.2 sudah menunjukkan kalibrasi memperbaiki skala, bukan peringkat.
+- **Stage 11.1 mengekspor artefak produksi:** golden LightGBM dilatih ulang pada seluruh
+  55.503 baris; OOF Stage 10.3 direproduksi dengan selisih maksimum 0,0; sigmoid di-fit pada
+  OOF (Brier 0,016072; ECE 0,000811; mean 0,017206 vs prevalensi 0,017206) dan dipilih
+  sebelum evaluasi karena rank-preserving. Artefak
+  `results/models/golden_lightgbm_12a.joblib` berukuran **157.432 B**, SHA256
+  `98c86efb…45da`, dan memuat model, sigmoid + isotonic, 16 nama fitur, parameter, metadata
+  dataset, metrik OOF/in-sample, feature importance, limitations, dan environment.
+- **Stage 11.2 menambahkan CLI mandiri:** `src/inference_features.py` memegang kontrak 16
+  fitur + parser CIF/PDB/PAE + fetch AFDB; `src/predict.py` menerima `--uniprot` atau
+  `--structure` + `--pae` dan menulis CSV per-residu. Diuji pada P02144 (154 residu; CIF
+  lokal, PDB lokal, AFDB, cache — output numerik identik; paritas fitur maksimum 3,55e-15,
+  0 nilai > 1e-12, probabilitas identik bit) dan P00520 (1.123 residu). Error path: PAE
+  hilang dan multi-chain exit 2; `--chain A` exit 0. Ambang 0,5 hanya tampilan dan memberi
+  0 panggilan pada kedua protein.
+- **Stage 11 tetaplah bukan validasi eksternal.** Kalibrator in-sample terhadap 102 protein
+  yang sama, model final melihat seluruh label training, dan tidak ada protein baru dengan
+  label independen. Artefak joblib adalah pickle dan hanya boleh dimuat dari sumber
+  tepercaya (C29, C30).
 - Dataset AFDB, dataset Stage 7, lock Stage 8.2, dan dataset Stage 9.x/10.1/10.2 **tidak
-  diubah**; Stage 10.3 tidak membuat dataset baru — hanya artefak evaluasi di luar repo.
+  diubah**; Stage 10.3/11 tidak membuat dataset baru — hanya artefak evaluasi + artefak
+  model.
 - Gate berikutnya: putuskan status benchmark Stage 9.3–10.3, jalankan ablasi dan
   importance-stability, lalu validasi eksternal pada protein baru; kalibrasi sudah
   diuji internal tetapi **belum** lintas-protein eksternal. Belum ada klaim generalisasi.
-- **Belum di-commit:** dokumentasi Stage 10.3 ada di working tree dan menunggu
-  persetujuan user; tidak ada commit/push pada sesi ini.
+- **Status commit:** dokumentasi Stage 10.3 sudah di-commit dan di-push sebagai `628e178`.
+  Script/dokumentasi Stage 11 masih di working tree dan **menunggu persetujuan user**;
+  tidak ada commit/push Stage 11 pada sesi ini.
 
 ---
 
@@ -2274,12 +2371,185 @@ Tiga konfigurasi efektif: `lgbm__032c38ffe37f`, `lgbm__4e9ac82cd5df`, `xgb__496d
 
 ---
 
-## 23. Recommended Next Step — External Validation
+## 23. Stage 11 — Production Artifact & Standalone Inference Pipeline (Tested 2026-10-21)
+
+**Status: TESTED — ARTEFAK REPRODUCIBLE DAN CLI BERJALAN END-TO-END; BUKAN VALIDASI
+EKSTERNAL.**
+
+### 23.1 Artifact identity
+
+| Field | Value |
+|---|---|
+| Artefak | `results/models/golden_lightgbm_12a.joblib` |
+| Ukuran | **157.432 B** |
+| SHA256 | `98c86efbebcb7e7986921386a07ca76319c453536dd8e4a2afd2a9b8085445da` |
+| `artifact_version` / `stage` | `stage11-1.0` / `11.1` |
+| `artifact_name` | `golden_lightgbm_12a` |
+| Model | LightGBM `lgbm__032c38ffe37f` (Stage 10.3 golden) |
+| Dataset latih | `results/dataset/production_dataset_100_calibrated.csv`, SHA256 `2c4bcb3d…ea3a`, 9.667.972 B |
+| Baris / protein / positif | **55.503 / 102 / 955** (prevalensi 0,017206277138172712) |
+| Fitur | 16, urutan tetap (7 struktural + 3 spasial radius 12 Å + 6 one-hot AA) |
+| Kalibrator deployed | sigmoid pada logit skor OOF |
+| Kalibrator pembanding | isotonic pada skor OOF |
+| Environment | Python 3.12.10; numpy 2.5.3; pandas 3.0.6; scikit-learn 1.9.1; lightgbm 4.6.0; scipy 1.18.1; joblib 1.6.0; biopython 1.88 |
+
+Artefak memuat `model`, `calibrator` (sigmoid), `calibrator_isotonic`, `feature_names`,
+`model_params`, `model_kwargs`, `dataset`, `oof` (metrics + SHA256 skor float64
+`9d05419659ef6c26f023e3e48474b988eabfb5d651d7932889817a7c0309a192`), `calibration`,
+`final_model` (metrik in-sample + warning), `feature_importance`, `limitations`,
+`training_source`, dan `environment`. Model final dilatih pada **seluruh 55.503 baris**;
+metrik OOF adalah evaluasi cross-validation, bukan performa model final.
+
+### 23.2 Export protocol (`src/export_model.py`)
+
+1. **Validasi dataset sebelum menyentuh model.** Hash SHA256, ukuran byte, jumlah baris,
+   jumlah protein/positif, 24 protein zero-positive, 78 fold evaluable, kolom wajib, tidak ada
+   NaN, tidak ada duplikat `(uniprot_id, sequence_position)`, penomoran 1..N, konsistensi
+   `amino_acid_type`, pLDDT ∈ [0, 100], density ≥ 1, dan PAE non-negatif. Dataset yang berbeda
+   ditolak, bukan diterima diam-diam.
+2. **Reproduksi OOF Stage 10.3.** 102-fold LOGO dengan konfigurasi golden dan kwargs
+   deterministik (`num_threads=1`, `force_col_wise=True`, `deterministic=True`,
+   `random_state=42`). Metrik dibandingkan dengan nilai Stage 10.3 yang diharapkan pada
+   `atol=1e-9`; OOF direproduksi dengan selisih maksimum **0,0**. Loop memakan ~54 detik.
+3. **Fit kalibrator pada skor OOF.** Sigmoid = `LogisticRegression(C=1e6, solver="lbfgs",
+   max_iter=1000, tol=1e-10)` pada `logit(p_raw)` dengan clip 1e-6; isotonic =
+   `IsotonicRegression(out_of_bounds="clip", y_min=0, y_max=1)`. Sigmoid dipilih **sebelum
+   evaluasi** karena rank-preserving dan tidak menciptakan tie; isotonic hanya pembanding.
+4. **Latih ulang model final pada semua baris**, lalu tulis payload dengan
+   `joblib.dump(compress=3)`. Script mencetak SHA256 dan ukuran artefak.
+
+Koefisien sigmoid yang tersimpan: **0,8216068** (logit) dan intercept **−2,7257097**, yaitu
+`sigmoid(0,8216068 × logit(p_raw) − 2,7257097)`.
+
+### 23.3 Calibration results (OOF, 55.503 skor)
+
+| Metode | Mean predicted | Min | Max | Brier | Log loss | ECE (10 bins) | Nilai unik |
+|---|---:|---:|---:|---:|---:|---:|---:|
+| raw | 0,140044 | 0,000346 | 0,919933 | 0,052005 | 0,191708 | 0,122838 | 53.670 |
+| **sigmoid (deployed)** | **0,017206** | 0,000094 | 0,327435 | **0,016072** | 0,073974 | **0,000811** | 53.670 |
+| isotonic (pembanding) | 0,017206 | 0,0 | 1,0 | 0,015955 | 0,073141 | ≈0 (2,2e-18) | **45** |
+
+Prevalensi OOF = 0,0172063. Sigmoid memindahkan mean predicted tepat ke prevalensi tanpa
+mengubah urutan skor; isotonic sedikit lebih rendah Brier-nya tetapi meruntuhkan 55.503 skor
+menjadi 45 nilai, sehingga tidak dipakai. **Ini in-sample calibration fit pada skor OOF yang
+juga dipakai mengevaluasi**, bukan estimasi pada protein baru.
+
+Model final (dilatih pada semua baris) menyimpan metrik in-sample sebagai sanity check:
+raw Brier 0,045595 / ECE 0,121765; sigmoid Brier 0,014528 / ECE 0,012303; isotonic Brier
+0,014142 / ECE 0,011578. Artefak menyertakan warning bahwa model final melihat seluruh label
+training dan angka ini tidak boleh dilaporkan sebagai performa/validasi.
+
+### 23.4 Inference pipeline (`src/inference_features.py`, `src/predict.py`)
+
+`inference_features.py` adalah satu-satunya sumber definisi fitur untuk export dan predict:
+konstanta kimia diimpor dari `extract_protein_features.py` (`AA_TYPE`, `CHARGE_PH7`,
+`KD_HYDROPATHY`, `PAE_LOCAL_WINDOW`), radius 12,0 Å, 16 nama fitur dalam urutan tetap, parser
+mmCIF/PDB, parser PAE, fetch + verifikasi AFDB, dan cache. `predict.py` memuat artefak,
+memvalidasi kontrak fitur, menghitung fitur, menerapkan kalibrator, dan menulis CSV.
+
+Output default (stdout) / `--out`:
+
+```
+protein_id, uniprot_id, sequence_position, amino_acid, plddt_ca,
+probability_raw, probability_calibrated, predicted_active_binding
+```
+
+Ringkasan JSON ke stderr memuat jumlah residu, ambang, jumlah panggilan, mean/max
+probabilitas, top residu, SHA256 artefak/struktur/PAE, versi AFDB, cache hit, warning, dan
+catatan bahwa kalibrasi bukan validasi eksternal. `--features-out` menulis 16 fitur + tiga
+kolom identitas dengan presisi `%.17g`. Error input mengembalikan exit code **2**.
+
+Contoh:
+
+```bash
+python src/predict.py --uniprot P02144 --out results/predictions/P02144.csv
+python src/predict.py --structure AF-P02144-F1-model_v6.cif \
+    --pae AF-P02144-F1-predicted_aligned_error_v6.json --out P02144.csv
+python src/predict.py --structure AF-P02144-F1-model_v6.pdb --out P02144_pdb.csv
+python src/predict.py --uniprot P00520 --threshold 0.5 --top 10 \
+    --features-out P00520_features.csv --out P00520.csv
+```
+
+**Syarat input.** Satu chain (atau `--chain`); penomoran residu tepat 1..N tanpa renumbering;
+B-factor = pLDDT AFDB ∈ [0, 100]; matriks PAE N×N; HETATM dan altloc selain blank/A dilewati;
+insertion code ditolak; residu dengan nol tetangga radius 12 Å = error (tidak ada imputasi).
+PDB eksperimental umumnya tidak memenuhi syarat pLDDT/PAE dan **tidak didukung** kecuali file
+dikonversi dari prediksi AlphaFold. Struktur lokal diasumsikan berasal dari prediksi yang sama
+dengan PAE-nya; provenance tidak bisa diverifikasi. AFDB selain v6 memicu warning pergeseran
+distribusi.
+
+### 23.5 Test evidence
+
+| Uji | Hasil |
+|---|---|
+| Export dari dataset committed | 55.503 baris / 102 protein / 955 positif; OOF identik dengan Stage 10.3 (selisih maks **0,0**); artefak 157.432 B, SHA256 `98c86efb…45da` |
+| Paritas fitur P02144 vs dataset | 154/154 baris; 16 fitur X selisih maksimum **3,55e-15**, **0 nilai > 1e-12**; probabilitas raw dan calibrated selisih **0,0** |
+| P02144 — CIF lokal | exit 0; 154 residu; mean calibrated 0,032184; max 0,147086 di H25; 0 panggilan pada ambang 0,5 |
+| P02144 — PDB lokal (konversi Biopython dari CIF AFDB) | exit 0; kolom numerik identik dengan CIF lokal |
+| P02144 — unduhan AFDB | exit 0; kolom numerik identik; CIF + PAE + API JSON ter-cache |
+| P02144 — cache hit | exit 0; kolom numerik identik dengan unduhan pertama |
+| P00520 — AFDB | exit 0; 1.123 residu; mean calibrated 0,006964; max 0,154756 di G251; 0 panggilan pada ambang 0,5 |
+| PAE hilang | exit **2** dengan pesan error; tidak ada output CSV |
+| PDB dua chain tanpa `--chain` | exit **2**: "ditemukan 2 chain ['A', 'B']"; dengan `--chain A` exit 0 |
+
+P02144 adalah protein training dengan dua label positif A+B (H65 dan H94). H65 berada di
+peringkat keempat skor terkalibrasi, tetapi ini **bukan** bukti validasi: label tersebut sudah
+dilihat model dan seluruh proses desain. P00520 juga protein training. Kedua uji hanya
+menunjukkan bahwa pipeline mengeluarkan skor yang konsisten, bukan bahwa skor itu benar secara
+biologis.
+
+### 23.6 Limitations and interpretation
+
+- **Deployment, bukan validasi.** Model final dilatih pada seluruh 102 protein; kalibrator
+  di-fit pada OOF protein yang sama. Tidak ada protein baru dengan label independen. Nested
+  Stage 10.3 (median PR 0,1550 / pooled gain 4,55×) tetap menjadi estimasi internal yang lebih
+  konservatif.
+- **Ambang 0,5 tidak tervalidasi.** Ini hanya konvensi tampilan. P02144 dan P00520 mendapat
+  nol panggilan karena probabilitas terkalibrasi maksimum hanya 0,1471 dan 0,1548. Jangan
+  menafsirkan "tidak ada panggilan" sebagai "tidak ada binding site".
+- **Kalibrasi tidak memperbaiki diskriminasi.** Stage 10.2 sudah menunjukkan kalibrasi
+  memperbaiki skala, bukan pooled/within-protein ROC. Stage 11 mewarisi batas itu.
+- **Kontrak input sempit.** PAE wajib, pLDDT harus ada di B-factor, hanya satu chain,
+  penomoran 1..N, dan tidak ada imputasi. Struktur eksperimen, kompleks, ligan, dan PTM tidak
+  didukung.
+- **Ketergantungan AFDB v6.** Artefak dilatih pada fitur AFDB v6. Versi lain hanya memberi
+  warning, bukan jaminan kompatibilitas.
+- **Artefak joblib adalah pickle.** Hanya muat dari sumber tepercaya; jangan memuat file yang
+  tidak dikenal.
+- **Belum ada test suite Stage 11 yang di-commit.** Bukti di atas berasal dari harness
+  eksternal (temporary). `src/export_model.py` dan `src/predict.py` belum memiliki file
+  `test_*.py` di repo.
+- **Tidak ada jaminan stabilitas lintas environment.** Artefak menyimpan versi library, tetapi
+  pickle LightGBM/scikit-learn dapat berperilaku berbeda di versi lain; gunakan pin di
+  `requirements.txt`.
+
+### 23.7 Audit provenance
+
+- File baru: `src/inference_features.py`, `src/export_model.py`, `src/predict.py`, dan
+  `results/models/golden_lightgbm_12a.joblib`.
+- Perubahan pendukung: `requirements.txt` (pin scikit-learn 1.9.1, lightgbm 4.6.0, scipy
+  1.18.1, joblib 1.6.0), `README.md`, dan dokumen ini.
+- Harness uji eksternal (di luar repo):
+  `C:\Users\walet\AppData\Local\Temp\stage111_audit\` — `repro_check.py`, `feature_parity.py`,
+  CSV/summary P02144 dan P00520, cache AFDB, `two_chain.pdb`, `no_pae/`, dan artefak uji
+  lainnya. Tidak ada file uji ini yang di-commit.
+- Environment: Python 3.12.10; numpy 2.5.3; pandas 3.0.6; scikit-learn 1.9.1; lightgbm 4.6.0;
+  scipy 1.18.1; joblib 1.6.0; biopython 1.88.
+- Repo HEAD saat audit: `628e178`. Stage 11 belum di-commit; `git status` menunjukkan
+  `results/models/`, `src/export_model.py`, `src/inference_features.py`, `src/predict.py`
+  sebagai untracked, plus `download/` yang tidak terkait.
+- OOF dicek ulang terhadap referensi Stage 10.3
+  (`C:\Users\walet\AppData\Local\Temp\stage103_audit\final\oof_golden.npz`): 55.503 baris,
+  `y` dan grup identik, selisih maksimum 0,0.
+
+---
+
+## 24. Recommended Next Step — External Validation
 
 **Rekomendasi: validasi eksternal pada protein yang tidak terlibat dalam desain, bukan
-klaim generalisasi. Sweep radius dan kalibrasi out-of-fold diselesaikan di Stage 10.2, dan
-tuning + pemilihan golden diselesaikan di Stage 10.3; semuanya masih evaluasi internal pada
-102 protein yang sama.**
+klaim generalisasi. Sweep radius dan kalibrasi out-of-fold diselesaikan di Stage 10.2, tuning
++ pemilihan golden diselesaikan di Stage 10.3, dan ekspor artefak + CLI diselesaikan di
+Stage 11; semuanya masih evaluasi internal pada 102 protein yang sama.**
 
 Fokus:
 
@@ -2287,8 +2557,9 @@ Fokus:
    kalibrator; uji kalibrasi probabilitas lintas-protein pada protein baru.
 2. **Pertahankan Stage 8.2 tetap frozen.** Jangan mengubah
    `stage7_processed_dataset.csv` atau `BENCHMARK_DATASET_LOCK.md`.
-3. **Pin dependensi ML** (`scikit-learn`, `xgboost`, `scipy`, `numpy`, `pandas`) di
-   `requirements.txt` hanya setelah persetujuan user.
+3. **Lengkapi pin dependensi ML.** Stage 11 sudah mem-pin `scikit-learn==1.9.1`,
+   `lightgbm==4.6.0`, `scipy==1.18.1`, dan `joblib==1.6.0`; `xgboost`, `numpy`, dan `pandas`
+   masih berupa rentang versi. Pin sisanya hanya setelah persetujuan user.
 4. **P11532 sudah dikeluarkan di Stage 9.5** (C21 selesai untuk dataset bersih). Jika
    ingin dipakai lagi, rebuild dari sumber full-length yang selaras dengan sekuens
    kanonik dan jadikan artefak terpisah — jangan menyunting dataset bersih atau memakai
@@ -2301,10 +2572,12 @@ Fokus:
    within-protein z-scored ROC 0,7709; Brier 0,0520 dan ECE 0,1228 (skor mentah, belum
    terkalibrasi); between-protein AUC 0,7751. Nested LOGO-CV memberi median PR 0,1550 /
    pooled gain 4,55× — gunakan angka nested sebagai estimasi internal yang lebih
-   konservatif. Bandingkan dengan Stage 10.2 (XGB pooled 0,7956 / 0,0881; RF 0,7759 /
-   0,0711), Stage 10.1 (radius 8 Å: XGB 0,7676 / 0,0759; RF 0,7568 / 0,0668), Stage 9.5
-   (XGB 0,7476 / 0,0640; RF 0,7476 / 0,0608), dan Stage 9.4 hanya sebagai pembanding
-   historis (C24).
+   konservatif. Stage 11 tidak mengubah urutan skor: sigmoid hanya memetakan ulang skor OOF
+   (Brier 0,016072, ECE 0,000811, mean 0,017206), dan isotonic pembanding (Brier 0,015955)
+   meruntuhkan skor menjadi 45 nilai unik. Bandingkan dengan Stage 10.2 (XGB pooled 0,7956 /
+   0,0881; RF 0,7759 / 0,0711), Stage 10.1 (radius 8 Å: XGB 0,7676 / 0,0759; RF 0,7568 /
+   0,0668), Stage 9.5 (XGB 0,7476 / 0,0640; RF 0,7476 / 0,0608), dan Stage 9.4 hanya sebagai
+   pembanding historis (C24).
 7. **Putuskan status benchmark Stage 9.3, 9.4, 9.5, 10.1, 10.2, dan 10.3** (lock terpisah
    atau tetap sebagai artefak ekspansi) sebelum memakai metriknya sebagai pembanding resmi.
 8. **Jangan memakai pooled ROC sebagai bukti generalisasi.** Laporkan juga metrik
@@ -2324,20 +2597,26 @@ Fokus:
     antar-protein; between-protein AUC hanya bergeser < 0,007 (C27).
 11. **Enam kolom OOF pada dataset terkalibrasi bukan fitur latih.** Jangan memakainya
     sebagai input model tanpa nested CV; kolom itu adalah artefak audit (C28).
+12. **Perlakukan `results/models/golden_lightgbm_12a.joblib` sebagai kandidat deployment,
+    bukan model tervalidasi.** Artefak dilatih pada seluruh 102 protein dan kalibratornya
+    di-fit pada OOF protein yang sama. Hasil `predict.py` pada P02144/P00520 hanya bukti
+    pipeline, bukan bukti biologis. Sebelum dipakai untuk keputusan nyata, jalankan validasi
+    eksternal, tetapkan ambang pada data berlabel baru, dan dokumentasikan provenance input.
 
-**Gate Stage 10.3:** jangan klaim generalisasi sebelum ada validasi eksternal dan metrik
-yang direproduksi dari repo bersih. Stage 10.2 sudah melewati bagian sweep radius dan
-kalibrasi OOF internal; Stage 10.3 sudah melewati tuning dan pemilihan golden internal,
-termasuk nested LOGO-CV. Keduanya belum melewati gate validasi eksternal dan tidak menguji
-satu pun protein baru.
+**Gate Stage 10.3/11:** jangan klaim generalisasi sebelum ada validasi eksternal dan metrik
+yang direproduksi dari repo bersih. Stage 10.2 sudah melewati sweep radius dan kalibrasi OOF
+internal; Stage 10.3 sudah melewati tuning dan pemilihan golden internal, termasuk nested
+LOGO-CV; Stage 11 sudah melewati ekspor artefak dan uji CLI end-to-end. Ketiganya belum
+melewati gate validasi eksternal dan tidak menguji satu pun protein baru berlabel.
 
 ---
 
 ```
 NEXT GATE:
-STAGE 10.4+ — EXTERNAL VALIDATION
-(Stage 10.3 = hyperparameter tuning + golden selection on the same 102 proteins,
- not external validation; Stage 10.2 = radius sweep + OOF calibration)
+EXTERNAL VALIDATION (STAGE 12+)
+(Stage 11 = production artifact + inference CLI on the same 102 proteins, tested
+ end-to-end, not external validation; Stage 10.3 = tuning + golden selection;
+ Stage 10.2 = radius sweep + OOF calibration)
 ```
 
 ---
@@ -2363,4 +2642,5 @@ indikasi kerusakan data (semua checksum & test tetap konsisten).
 | D11 | **Pembersihan P11532 mengubah metrik pooled vs Stage 9.4.** Setelah P11532 dikeluarkan dan model di-retrain: XGB pooled ROC 0,7575 → 0,7476, pooled PR 0,0606 → 0,0640, median ROC 0,7359 → 0,7371; RF pooled ROC 0,7471 → 0,7476, pooled PR 0,0573 → 0,0608, median ROC 0,7339 → 0,7330. | `results/dataset/production_dataset_100_cleaned.csv`; §19.3 | Rendah — bukan error; dampak pembersihan diukur dan didokumentasikan |
 | D12 | **`download/` tidak berisi file PDB/CIF/PAE untuk Stage 10.1.** Permintaan Stage 10.1 mengasumsikan file struktur ada di `download/`, tetapi folder itu hanya berisi 6 CSV, 4 Markdown, dan 1 notebook. Ekstraksi memakai cache audit Stage 9.4 di luar tracked tree (102 CIF + 102 PAE + 102 respons API AFDB); tidak ada unduhan baru. | Isi `download/`; `C:\Users\walet\AppData\Local\Temp\stage94_audit\data\`; §20.3 | Rendah — provenance jelas dan file yang dipakai adalah file audit Stage 9.4 yang sama; tetapi ekstraktor tidak dapat direproduksi hanya dari repo tanpa menyediakan file struktur |
 | D13 | **Boundary radius 10 Å sensitif terhadap presisi koordinat Cα.** `Bio.PDB` menyimpan koordinat sebagai `float32`, sedangkan Stage 10.2 mem-parse teks CIF penuh sebagai `float64`. Dua pasangan residu P01024 tepat di ambang 10,0 Å (posisi 531 dan 631) berubah status tetangga antara kedua representasi; radius 6/8/12 Å tidak terpengaruh. | Perbandingan `float64` CIF vs `Bio.PDB` `float32` pada P01024 (Stage 10.2); `extract_multi_radius.py`; §21.2–§21.3 | Rendah — hanya memengaruhi radius 10 Å pada satu protein; radius terpilih (12 Å) dan CSV r8 identik byte-per-byte dengan Stage 10.1. Angka radius 10 Å tidak boleh dianggap identik dengan ekstraksi `float32` |
-| D14 | **Nama "Stage 10.3" bertabrakan dengan rencana lama.** Dokumen Stage 10.2 menetapkan `STAGE 10.3+ — EXTERNAL VALIDATION`. Permintaan Stage 10.3 (2026-10-21) berisi tuning hiperparameter + pemilihan golden pada 102 protein yang sama, bukan validasi eksternal. Audit ini memakai nama Stage 10.3 sesuai permintaan dan memindahkan gate validasi eksternal menjadi Stage 10.4+. | §15, §22 (baru), §23; blok `NEXT GATE` sebelum dan sesudah audit | Rendah — bukan error data; risiko salah baca bahwa Stage 10.3 adalah validasi eksternal. Semua bagian baru menyatakan eksplisit bahwa Stage 10.3 = tuning internal dan tidak menguji protein baru |
+| D14 | **Nama "Stage 10.3" bertabrakan dengan rencana lama.** Dokumen Stage 10.2 menetapkan `STAGE 10.3+ — EXTERNAL VALIDATION`. Permintaan Stage 10.3 (2026-10-21) berisi tuning hiperparameter + pemilihan golden pada 102 protein yang sama, bukan validasi eksternal. Audit ini memakai nama Stage 10.3 sesuai permintaan dan memindahkan gate validasi eksternal ke setelah Stage 11. | §15, §22, §24; blok `NEXT GATE` sebelum dan sesudah audit | Rendah — bukan error data; risiko salah baca bahwa Stage 10.3 adalah validasi eksternal. Semua bagian baru menyatakan eksplisit bahwa Stage 10.3 = tuning internal dan tidak menguji protein baru |
+| D15 | **Tidak ada Stage 10.4; penomoran melompat ke Stage 11.** Dokumen Stage 10.2/10.3 menyebut gate berikutnya `STAGE 10.4+ — EXTERNAL VALIDATION`, sedangkan permintaan berikutnya (2026-10-21) adalah ekspor artefak + CLI inferensi, yang secara kronologis menjadi **Stage 11**, dan validasi eksternal tetap belum dikerjakan. Bagian baru ditempatkan sebagai §23; rekomendasi lama (sebelumnya §23) di-renumber menjadi §24. | §15, §23 (baru), §24; blok `NEXT GATE` | Rendah — bukan error data; risiko salah kira bahwa Stage 10.4 atau validasi eksternal sudah ada. Stage 11 adalah deployment dan tidak menguji protein baru berlabel |
