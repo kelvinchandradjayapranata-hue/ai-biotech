@@ -957,7 +957,7 @@ The figure below summarizes how PAE and pLDDT answer different confidence questi
 explanatory only; every feature in this project is computed directly from AFDB CIF/PAE files,
 not from the figure.
 
-![Conceptual guide to AlphaFold PAE and pLDDT](docs/assets/pae-confidence-guide.jpg)
+<img src="docs/assets/pae-confidence-guide.jpg" alt="Conceptual guide to AlphaFold PAE and pLDDT" width="100%">
 
 *PAE describes relative placement uncertainty between residue pairs; pLDDT describes local
 per-residue confidence. The file carries a visible `© BLOLC_ARTRICLE_MEASURIS` watermark;
@@ -967,7 +967,7 @@ The second figure is a generic structural-biology illustration of a two-domain p
 an annotated active site and Mg²⁺ ions. It is **not** a project target, not a dataset example,
 and metal binding is **not** a separate label class under the A+B policy.
 
-![Conceptual illustration of a two-domain protein with active site and Mg2+ ions](docs/assets/protein-active-site.jpg)
+<img src="docs/assets/protein-active-site.jpg" alt="Conceptual illustration of a two-domain protein" width="100%">
 
 *Illustrative only; source and reuse license were not recorded. Do not cite it as project
 data or as evidence for the A+B labels.*
