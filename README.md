@@ -10,7 +10,7 @@
 
 <p align="center">
   <img alt="Python 3.12.10" src="https://img.shields.io/badge/Python-3.12.10-3776AB?logo=python&logoColor=white">
-  <img alt="Status: Stages 1–10.2 complete, Stage 8.2 benchmark locked" src="https://img.shields.io/badge/Status-Stages%201%E2%80%9310.2%20complete%20%C2%B7%20Stage%208.2%20benchmark%20locked-brightgreen">
+  <img alt="Status: Stages 1–10.3 complete, Stage 8.2 benchmark locked" src="https://img.shields.io/badge/Status-Stages%201%E2%80%9310.3%20complete%20%C2%B7%20Stage%208.2%20benchmark%20locked-brightgreen">
   <img alt="Data source: AlphaFold Database v6" src="https://img.shields.io/badge/Data-AlphaFold%20Database%20v6-blue">
 </p>
 
@@ -50,9 +50,14 @@ radii 6/8/10/12 Å and selects **12.0 Å** using a pre-declared rule, raising me
 to 0.8120 (XGBoost) and 0.8089 (Random Forest); it also tests per-fold isotonic and Platt
 (sigmoid) calibration. Calibration fixes the absolute probability scale (Brier 0.1820 → 0.0163;
 ECE 0.3569 → 0.0016) but does not improve rank-based metrics or remove cross-protein score
-inflation. These remain data-engineering, feature-engineering, and calibration-audit milestones,
-not external validation, and the pooled ROC increase is not a like-for-like measure of
-generalization.
+inflation. **Stage 10.3** tunes XGBoost, LightGBM, and Random Forest on that same 16-feature,
+12 Å dataset (101 unique configurations across 102-fold LOGO-CV), compares class-imbalance
+strategies, and selects a golden LightGBM model: median ROC 0.8411 / PR 0.1693, pooled ROC
+0.8131 / PR 0.1142 (6.63x prevalence), within-protein z-scored ROC 0.7709. Nested LOGO-CV
+with an inner `GroupKFold(5)` lowers median PR to 0.1550 and pooled gain to 4.55x, quantifying
+selection optimism. These remain data-engineering, feature-engineering, tuning, and
+calibration-audit milestones, not external validation, and the pooled ROC increase is not a
+like-for-like measure of generalization.
 
 ## Research Objectives
 
@@ -78,16 +83,20 @@ Cα coordinates at radius 8.0 Å, producing a 55,503 × 15 dataset; all 166,509 
 reproduced independently, and LOGO-CV improves on both models, including within-protein metrics.
 Stage 10.2 sweeps radii 6/8/10/12 Å, selects 12.0 Å, and tests isotonic/sigmoid calibration
 out-of-fold on the same 102 proteins; calibration improves the absolute probability scale but not
-ranking metrics or between-protein inflation (see [Current Results](#current-results)).
+ranking metrics or between-protein inflation. Stage 10.3 tunes XGBoost/LightGBM/Random Forest
+across 101 unique configurations, compares imbalance strategies, and selects a golden LightGBM
+(median PR 0.1693, pooled gain 6.63x); nested LOGO-CV reduces these to 0.1550 and 4.55x, exposing
+selection optimism (see [Current Results](#current-results)).
 
 **Future goals.** The benchmark dataset and a baseline are now in place, and the Stage 9.2
 expansion, its Stage 9.3 realignment, the Stage 9.4 103-protein scaling, the Stage 9.5
-cleansing, the Stage 10.1 spatial feature engineering, and the Stage 10.2 radius sweep +
-out-of-fold calibration have been audited. P11532 is excluded in Stage 9.5; the project now aims
-to run external validation on proteins not used for any design decision, test calibration on
-truly unseen proteins, and determine whether any signal generalizes beyond the current 102
-proteins. Feature ablation, importance stability across seeds, and radii above 12 Å remain open.
-No broad biological hypothesis or generalizable predictive model exists yet. See
+cleansing, the Stage 10.1 spatial feature engineering, the Stage 10.2 radius sweep +
+out-of-fold calibration, and the Stage 10.3 tuning/golden-model selection have been audited.
+P11532 is excluded in Stage 9.5; the project now aims to run external validation on proteins
+not used for any design decision, test calibration on truly unseen proteins, and determine
+whether any signal generalizes beyond the current 102 proteins. Feature ablation, importance
+stability across seeds, and radii above 12 Å remain open. No broad biological hypothesis or
+generalizable predictive model exists yet. See
 [Limitations and Future Work](#limitations-and-future-work).
 
 ## Research FAQ
@@ -109,7 +118,7 @@ features suitable for AI research. The current work addresses *data quality and 
 a specific biological hypothesis is not yet part of the project.
 
 **What has been completed so far?**
-Stages 1–10.2: sequence analysis, structure analysis (ubiquitin reference), residue-level feature
+Stages 1–10.3: sequence analysis, structure analysis (ubiquitin reference), residue-level feature
 extraction (ubiquitin, 76 × 28), dataset planning (7 proteins, 6 functional categories), the
 controlled AlphaFold DB download and validation (14 v6 files, checksums and sequences verified),
 and the multi-protein dataset (1,098 residues × 29 columns). All four extraction test suites pass
@@ -209,6 +218,19 @@ isotonic creates ties and worsens 58/78 RF folds. **The six OOF columns are audi
 training features** — using them as model inputs without nested cross-validation would leak.
 See [`docs/PROJECT_STATUS.md`](docs/PROJECT_STATUS.md) §21.
 
+**Stage 10.3** tunes XGBoost, LightGBM, and Random Forest on the same 16-feature, 12 Å dataset
+with 102-fold LOGO-CV: **101 unique configurations** (44 XGBoost, 46 LightGBM, 8 Random Forest,
+including three pass-selected combinations re-evaluated as fixed configurations). Imbalance
+weighting is metric-dependent: large `scale_pos_weight` values raise median per-protein PR but
+lower pooled PR, between-protein AUC, and probability calibration. A pre-declared rule selects
+**LightGBM `lgbm__032c38ffe37f`** (`max_depth=6`, `learning_rate=0.05`, `subsample=0.75`,
+`colsample_bytree=0.9`, `scale_pos_weight=20`) with median ROC 0.8411 / PR 0.1693, pooled ROC
+0.8131 / PR 0.1142 (6.63x), within-protein z-scored ROC 0.7709, Brier 0.0520, and ECE 0.1228
+(raw scores; calibration was not refit). Nested LOGO-CV with an inner `GroupKFold(5)` gives
+median PR 0.1550 and pooled gain 4.55x, so part of the gain is selection optimism. It is still
+internal evaluation on the same 102 proteins, not external validation. See
+[`docs/PROJECT_STATUS.md`](docs/PROJECT_STATUS.md) §22.
+
 **Is this already an AI model for drug discovery?**
 No. There is no generalizable trained model for function prediction, no molecular docking, no
 molecular dynamics, no compound screening, and no wet-lab validation. AlphaFold itself is a
@@ -227,14 +249,16 @@ compute does not by itself produce better science. See
 **What are the next research goals?**
 P11532 has now been excluded in Stage 9.5, yielding a clean 102-protein / 55,503-residue
 dataset with no missing structural values. Stage 10.1 added audited spatial-neighborhood
-features, and Stage 10.2 swept radii 6/8/10/12 Å (selecting 12 Å) and tested out-of-fold
-isotonic/sigmoid calibration. Use Stage 10.2 (12 Å, 16 model features) as the current internal
-feature set while keeping the A+B label policy, but treat the radius and feature definitions as
-candidates: run a full ablation against the 13 frozen features, an importance-stability check,
-and radii above 12 Å; then run **external validation** on proteins not used for feature or radius
-selection; test probability calibration on truly unseen proteins; report within-protein and
-median per-protein metrics alongside pooled ROC; and only then evaluate whether a broader
-biological question (e.g., GO terms or EC numbers) is supportable.
+features, Stage 10.2 swept radii 6/8/10/12 Å (selecting 12 Å) and tested out-of-fold
+isotonic/sigmoid calibration, and Stage 10.3 tuned the models and selected a golden LightGBM.
+Use the Stage 10.2 12 Å / 16-feature representation and the Stage 10.3 golden configuration as
+the current internal baseline while keeping the A+B label policy, but treat the radius, feature
+definitions, and tuned configuration as candidates: run a full ablation against the 13 frozen
+features, an importance-stability check, and radii above 12 Å; then run **external validation**
+on proteins not used for feature, radius, or hyperparameter selection; fit probability
+calibration on truly unseen proteins; report within-protein and median per-protein metrics
+alongside pooled ROC; and only then evaluate whether a broader biological question (e.g., GO
+terms or EC numbers) is supportable.
 
 **Is the project open to academic collaboration?**
 Yes. The pipeline, dataset, schema, and test suites are public and reproducible, and the project
@@ -258,7 +282,8 @@ flowchart TD
     K --> K2["Cleaned production dataset<br/>102 proteins · 55,503 residues — Stage 9.5"]
     K2 --> K3["Spatial feature dataset<br/>55,503 × 15 · radius-8 Å features — Stage 10.1"]
     K3 --> K4["Multi-radius sweep + OOF calibration<br/>55,503 × 21 · radius 12 Å — Stage 10.2"]
-    K4 --> L["External validation<br/>Stage 10.3+ — next"]
+    K4 --> K5["Directed tuning + golden model selection<br/>101 configs · 102-fold LOGO — Stage 10.3"]
+    K5 --> L["External validation<br/>Stage 10.4+ — next"]
 ```
 
 Each arrow is a checkpoint, not just a hand-off: the structure data is validated against
@@ -286,6 +311,7 @@ Pipeline status across all stages — as of the latest verified runs:
 | 9.5 | Cleaned production dataset — 55,503 × 12, 102 proteins, 955 positives, 78 evaluable folds | **AUDITED** — P11532 (3,685 rows) excluded; 0 empty/unmodeled cells; exact row-for-row derivation; XGB median ROC 0.7371 / pooled 0.7476; RF 0.7330 / 0.7476 |
 | 10.1 | Spatial feature dataset — 55,503 × 15, 102 proteins, 955 positives, 78 evaluable folds | **AUDITED** — 3 radius-8.0 Å features; 0 NaN; 166,509 new values independently reproduced (0 mismatches); XGB median ROC 0.7786 / pooled 0.7676; RF 0.7724 / 0.7568; within-protein 0.7156 / 0.7059 |
 | 10.2 | Calibrated multi-radius dataset — 55,503 × 21, 102 proteins, 955 positives, 78 evaluable folds | **AUDITED** — radii 6/8/10/12 Å, **12 Å selected** by a pre-declared rule; Friedman p < 1.5e-06; XGB median ROC 0.8120 / pooled 0.7956; RF 0.8089 / 0.7759; isotonic/sigmoid improve Brier/ECE but not pooled/within; 6 OOF columns verified (0 mismatches); 0 NaN, LF |
+| 10.3 | Tuned golden model — 101 unique configs on the 16-feature, 12 Å dataset, 102 proteins, 78 evaluable folds | **AUDITED** — 44 XGBoost + 46 LightGBM + 8 Random Forest (+3 re-evaluated pass-selected combinations); golden LightGBM `lgbm__032c38ffe37f`: median ROC 0.8411 / PR 0.1693, pooled ROC 0.8131 / PR 0.1142 (6.63x), within-z 0.7709, Brier 0.0520, ECE 0.1228 (raw); nested LOGO-CV median PR 0.1550 / pooled gain 4.55x; no external validation |
 
 **The multi-protein dataset** (`results/dataset/multi_protein_residue_features.csv`) contains
 **1,098 residue rows × 29 columns**: 3 protein identifier columns (`protein_id`,
@@ -537,6 +563,65 @@ without nested cross-validation would leak information. The dataset is a 15-feat
 evaluation columns, not a ready-made 21-feature training set. Full evidence:
 [`docs/PROJECT_STATUS.md`](docs/PROJECT_STATUS.md) §21.
 
+**Stage 10.3 — directed tuning, imbalance strategy, and golden model selection.** On the same
+55,503 × 21 calibrated dataset (16 training features: 7 structural, 3 spatial at 12 Å, and 6
+amino-acid one-hot; 102 proteins; 955 positives at 1.72%; 78 evaluable folds), **101 unique
+configurations** were evaluated with 102-fold LOGO-CV: 44 XGBoost (two one-factor-at-a-time
+passes), 46 LightGBM (two passes), 8 Random Forest (one pass), plus three pass-selected derived
+combinations re-evaluated as fixed configurations. A parameter change was accepted when median
+PR improved by more than 0.002, or when the change was within 0.002 and pooled gain improved by
+more than 0.05x; ties went to the lower Brier.
+
+**Imbalance comparison (pass-1 baseline).** No strategy dominates across metrics:
+
+| Model | Highest median PR | Best pooled PR / gain | Calibration consequence |
+|---|---|---|---|
+| XGBoost | 0.1274 (`scale_pos_weight=80`) | 0.0982 / 5.71x (`scale_pos_weight=1`) | Brier 0.0162 at weight 1 vs. 0.2358 at weight 80 |
+| LightGBM | 0.1305 (`scale_pos_weight=100`) | 0.1015 / 5.90x (`scale_pos_weight=1`); 0.1042 / 6.05x with `ratio` | Brier 0.0162 at weight 1 vs. 0.2354 at weight 100 |
+| Random Forest | 0.1301 (`class_weight=None`) | 0.0912 / 5.30x (`class_weight=None`) | Brier 0.0164 vs. 0.1942 (`balanced`) / 0.1902 (`balanced_subsample`) |
+
+Larger class weights raise median per-protein PR slightly but lower pooled PR, between-protein
+AUC, and probability calibration. `is_unbalance=True` is exactly equivalent to
+`scale_pos_weight="ratio"` in LightGBM (all eight metrics identical). For Random Forest,
+unweighted training beats both balanced options on every headline metric at this baseline.
+
+**Golden selection.** A pre-declared rule — highest median PR; within 0.005 of it, highest
+pooled gain; within 0.05x of that, lowest Brier — yields:
+
+| Model | Config | Median ROC (IQR) | Median PR (IQR) | Pooled ROC | Pooled PR | Gain | Within-z | Brier | ECE |
+|---|---|---|---:|---:|---:|---:|---:|---:|---:|
+| XGBoost | `xgb__496d370641fb` | 0.8303 (0.1346) | 0.1508 (0.1825) | 0.8156 | 0.1156 | 6.72x | 0.7662 | 0.0209 | 0.0373 |
+| **LightGBM** | **`lgbm__032c38ffe37f`** | **0.8411 (0.1446)** | **0.1693 (0.1737)** | **0.8131** | **0.1142** | **6.63x** | **0.7709** | 0.0520 | 0.1228 |
+| Random Forest | `rf__7d4e21346df6` | 0.8002 (0.1580) | 0.1256 (0.1572) | 0.7895 | 0.0945 | 5.49x | 0.7380 | **0.0162** | **0.0014** |
+
+The golden model is **LightGBM** with `n_estimators=100`, `max_depth=6`, `num_leaves=31`,
+`learning_rate=0.05`, `subsample=0.75`, `subsample_freq=1`, `colsample_bytree=0.9`,
+`min_child_samples=20`, and `scale_pos_weight=20`. Its full LOGO-CV profile is median ROC
+0.8411 (IQR 0.1446) / PR 0.1693 (IQR 0.1737); pooled ROC 0.8131 / PR 0.1142 (6.63x prevalence);
+within-protein z-scored ROC 0.7709; Brier 0.0520; log loss 0.1917; ECE 0.1228; mean predicted
+0.1400 against a prevalence of 0.0172 (8.14x overprediction); between-protein AUC 0.7751.
+Relative to Stage 10.2 XGBoost, median PR rises +0.0438 (+34.9%) and within-z rises +0.0214.
+Paired per-fold Wilcoxon tests show the gain is mainly in PR:
+
+| Comparator | Δ median ROC (p) | Δ median PR (p) |
+|---|---|---|
+| Stage 10.2 XGBoost raw | +0.0003 (0.3478) | **+0.0086 (0.0466)** |
+| Stage 10.2 Random Forest raw | +0.0158 (0.0862) | **+0.0108 (0.0107)** |
+| Stage 10.3 LightGBM baseline | -0.0033 (0.8989) | **+0.0120 (0.0316)** |
+
+**Nested check.** The global numbers are an optimistic selection estimate because tuning and
+evaluation use the same 102 proteins. A nested LOGO-CV — outer 102 folds, inner
+`GroupKFold(5)` on 101 training proteins, candidate chosen by inner median PR — selects XGBoost
+in 81 folds and LightGBM in 21, and gives median ROC 0.8303 / PR 0.1550, pooled ROC 0.7961 / PR
+0.0784 (4.55x), within-z 0.7680, Brier 0.0340, and ECE 0.0653. The gap (median PR 0.1693 →
+0.1550; pooled gain 6.63x → 4.55x) quantifies selection optimism. The pooled-PR drop is much
+larger than the per-fold median-PR change (36 folds up, 36 down, 6 ties), because each fold can
+select a different configuration and pooled metrics mix their score scales. The candidate set
+still comes from global tuning, so nested remains optimistic and is not external validation.
+**Brier and ECE are raw-score values; Stage 10.3 did not refit calibration.** They are not
+comparable to the Stage 10.2 calibrated scores (0.0163 / 0.0016). Full evidence:
+[`docs/PROJECT_STATUS.md`](docs/PROJECT_STATUS.md) §22.
+
 **Verification suites** (all measured on freshly generated outputs; each script exits `0` only if
 every check passes):
 
@@ -547,18 +632,22 @@ every check passes):
 | `src/test_afdb_download.py` | Stage 5 — file integrity, checksums, metadata | 16/16 PASS |
 | `src/test_multi_protein_features.py` | Stage 6 — recomputation from raw files; reproducibility | 24/24 PASS |
 
-**Current status:** Stages 1–10.2 are complete. A frozen Stage 8.2 benchmark and a reproducible
+**Current status:** Stages 1–10.3 are complete. A frozen Stage 8.2 benchmark and a reproducible
 ML baseline exist, alongside an independently audited 14-protein Stage 9.2 expansion, its Stage
 9.3 realignment to the frozen feature definitions, the 103-protein Stage 9.4 production
 dataset, the cleaned 102-protein Stage 9.5 dataset, the 55,503 × 15 Stage 10.1 spatial dataset,
-and the 55,503 × 21 Stage 10.2 calibrated dataset (radius 12 Å plus six OOF score columns).
-XGBoost reproduces exactly at every stage; Stage 9.4 Random Forest reproduces pooled ROC but not
-median ROC or pooled PR (later metrics are computed directly, with no external claim to
-reproduce). P11532 is excluded in Stage 9.5, leaving zero missing structural values. Stage 10.2
-sweeps radii 6/8/10/12 Å, selects 12 Å by a pre-declared rule, and shows that isotonic/sigmoid
-calibration fixes the probability scale but not ranking or cross-protein inflation. It is still
-internal evaluation on the same 102 proteins. No biological conclusions or generalization claims
-are drawn from any expansion; the next gate is external validation.
+the 55,503 × 21 Stage 10.2 calibrated dataset (radius 12 Å plus six OOF score columns), and the
+Stage 10.3 directed tuning and golden-model selection over 101 configurations. Stage 10.3 selects
+a LightGBM golden model (median PR 0.1693, pooled PR gain 6.63x), but nested LOGO-CV drops to
+0.1550 median PR / 4.55x, and it is still internal evaluation on the same 102 proteins. XGBoost
+reproduces exactly at every stage; Stage 9.4 Random Forest reproduces pooled ROC but not median
+ROC or pooled PR (later metrics are computed directly, with no external claim to reproduce).
+P11532 is excluded in Stage 9.5, leaving zero missing structural values. Stage 10.2 sweeps radii
+6/8/10/12 Å, selects 12 Å by a pre-declared rule, and shows that isotonic/sigmoid calibration
+fixes the probability scale but not ranking or cross-protein inflation. Stage 10.3's Brier/ECE
+are raw scores, and its global metrics carry selection optimism disclosed above. No biological
+conclusions or generalization claims are drawn from any expansion; the next gate is external
+validation.
 
 ## Dataset Visualizations
 
@@ -599,7 +688,7 @@ ai-biotech/
 │   ├── extract_multi_protein_features.py    # Stage 6: multi-protein feature extraction
 │   └── test_*.py                            # integrity test suites (Stages 3–6)
 ├── results/
-│   ├── dataset/                             # Stage 4–10.2 outputs (CSV · JSON · PNG)
+│   ├── dataset/                             # Stage 4–10.3 outputs (CSV · JSON · PNG)
 │   │   ├── stage7_processed_dataset.csv     # frozen benchmark (1,098 × 27, SHA256-locked)
 │   │   ├── production_dataset_100_realigned.csv  # Stage 9.4 (59,188 × 12, 103 proteins)
 │   │   ├── production_dataset_100_cleaned.csv    # Stage 9.5 (55,503 × 12, 102 proteins, P11532 excluded)
@@ -713,7 +802,7 @@ in this repository should be read as experimentally validated structure or funct
 
 ## Limitations and Future Work
 
-### Completed (Stages 1–10.2)
+### Completed (Stages 1–10.3)
 
 Protein data retrieval (AlphaFold Server reference structure; 7 curated AlphaFold DB entries),
 structure validation (checksums, sequence matching, PAE shape), residue-level feature extraction
@@ -727,21 +816,26 @@ the Stage 9.4 production dataset (103 proteins; 59,188 × 12; all sequence featu
 (102 proteins; 55,503 × 12; P11532 excluded; zero missing structural values; LOGO-CV re-trained),
 the Stage 10.1 spatial feature dataset (55,503 × 15; three radius-8.0 Å neighborhood
 features; 166,509 new values independently reproduced; 0 NaN; LOGO-CV re-trained with 16
-features), and the Stage 10.2 multi-radius sweep + calibrated dataset (four radii; 12 Å selected
+features), the Stage 10.2 multi-radius sweep + calibrated dataset (four radii; 12 Å selected
 by a pre-declared rule; 55,503 × 21 with six OOF score columns; independent verification passed;
-isotonic/sigmoid calibration improves Brier/ECE but not ranking). Details and evidence in
+isotonic/sigmoid calibration improves Brier/ECE but not ranking), and the Stage 10.3 directed
+tuning + golden selection (101 unique configurations across XGBoost, LightGBM, and Random
+Forest; imbalance strategies compared; golden LightGBM `lgbm__032c38ffe37f` at median PR 0.1693 /
+pooled gain 6.63x, with nested LOGO-CV at 0.1550 / 4.55x). Details and evidence in
 [Current Results](#current-results),
 [`docs/BENCHMARK_DATASET_LOCK.md`](docs/BENCHMARK_DATASET_LOCK.md), and
-[`docs/PROJECT_STATUS.md`](docs/PROJECT_STATUS.md) §16–§21.
+[`docs/PROJECT_STATUS.md`](docs/PROJECT_STATUS.md) §16–§22.
 
 ### Not yet completed
 
 None of the following exist yet, and none are claimed:
 
 - **Generalizable predictive models.** Baselines have been trained and evaluated (Stage 8.2 on 7
-  proteins; Stage 9.5 on 102; Stage 10.1/10.2 on 102 with 16 features). Stage 8.2 pooled ROC-AUC
-  is close to random; Stage 10.2 reaches 0.7956 pooled (XGB) but only 0.7495 within-protein and
-  has no external validation. No model is claimed to predict protein function in general.
+  proteins; Stage 9.5 on 102; Stage 10.1/10.2 on 102 with 16 features; Stage 10.3 with tuned
+  configurations on the same 102 proteins). Stage 8.2 pooled ROC-AUC is close to random; the
+  Stage 10.3 golden LightGBM reaches 0.8131 pooled ROC / 0.8411 median ROC, but only 0.7709
+  within-protein and has no external validation. No model is claimed to predict protein function
+  in general.
 - **Molecular docking, molecular dynamics, compound screening.** No such analysis exists in this
   project.
 - **Experimental validation.** No wet-lab work, and the predictions have not been compared
@@ -776,9 +870,12 @@ None of the following exist yet, and none are claimed:
   XGB / 0.7759 RF) uses different datasets, prevalence (4.19% → 1.72%), and fold counts.
   Within-protein z-scored pooled ROC is 0.6877 → 0.7495 (XGB) and 0.6891 → 0.7338 (RF),
   between-protein AUC remains 0.7828 / 0.7870, and median per-protein ROC improves from 0.7185
-  (Stage 8.2) to 0.8120 (Stage 10.2, XGB). Absolute pooled PR falls from 0.0916 (Stage 8.2) to
-  0.0881 (Stage 10.2, XGB), but the datasets are not like-for-like. The Stage 9.4 value (0.7575)
-  was partly inflated by P11532 and drops to 0.7476 after cleansing.
+  (Stage 8.2) to 0.8120 (Stage 10.2, XGB). The Stage 10.3 golden LightGBM moves to pooled ROC
+  0.8131, within-protein z-scored 0.7709, between-protein AUC 0.7751, and median per-protein ROC
+  0.8411, but its pooled PR 0.1142 is a raw-score, selection-optimistic value. Absolute pooled PR
+  falls from 0.0916 (Stage 8.2) to 0.0881 (Stage 10.2, XGB), and the datasets are not
+  like-for-like. The Stage 9.4 value (0.7575) was partly inflated by P11532 and drops to 0.7476
+  after cleansing.
 - **Spatial features are collinear; the radius is swept but not globally resolved.**
   At 12 Å, `spatial_plddt_mean_12a` correlates 0.9730 (Pearson) with `plddt_ca`,
   `spatial_pae_mean_12a` correlates 0.8956 (Spearman) with `pae_local_mean_k10`, and
@@ -793,6 +890,24 @@ None of the following exist yet, and none are claimed:
   0.7828 → 0.7889/0.7859. Isotonic creates ties and perturbs fold rankings; sigmoid preserves
   them. The six `oof_*` columns are audit outputs, not training features, and require nested CV
   if reused.
+- **Stage 10.3 global metrics carry selection optimism.** Tuning, golden selection, and final
+  evaluation all use the same 102 proteins and the same LOGO folds, so the golden numbers are an
+  optimistic estimate. Nested LOGO-CV with inner `GroupKFold(5)` gives median PR 0.1550 (vs.
+  0.1693) and pooled gain 4.55x (vs. 6.63x), and it selects XGBoost in 81 of 102 folds; the
+  candidate pool still comes from global tuning, so even the nested result is optimistic.
+  Per-fold median PR is essentially unchanged (36 folds up, 36 down, 6 ties); the pooled-PR drop
+  comes from mixing score scales across fold-selected configurations. No seed-stability or
+  repeated-CV analysis was run.
+- **Stage 10.3 probabilities are uncalibrated.** Brier 0.0520 and ECE 0.1228 are raw LightGBM
+  scores, with mean predicted probability 0.1400 against 1.72% prevalence (8.14x). They are not
+  comparable to the Stage 10.2 calibrated scores (Brier 0.0163, ECE 0.0016); no calibration layer
+  was refit in Stage 10.3, and Stage 10.2 already showed that calibration changes scale, not
+  ranking.
+- **Imbalance conclusions depend on the metric.** Large `scale_pos_weight` values raise median
+  per-protein PR (to roughly 0.13) while lowering pooled PR (to roughly 0.086–0.094),
+  between-protein AUC, and calibration; unweighted training gives the best pooled PR/Brier at
+  the pass-1 baseline. The golden model uses `scale_pos_weight=20` only because it survived the
+  pre-declared median-PR acceptance rule, not because one strategy dominates.
 - **Stage 10.1/10.2 inputs are outside the repository.** `download/` contains no PDB/CIF/PAE
   files; the extractors used the audited Stage 9.4 AFDB cache in a temporary directory. The
   dataset SHA256s are reproducible from that cache, but a fresh clone cannot rerun extraction
@@ -807,20 +922,23 @@ None of the following exist yet, and none are claimed:
 
 1. **P11532 is excluded in Stage 9.5.** If a sequence-aligned full-length source becomes
    available, rebuild it as a separate artifact; do not edit the cleaned dataset.
-2. **Decide the benchmark status of Stage 9.3, 9.4, 9.5, 10.1, and 10.2** — lock each as a
-   separate benchmark with its own SHA256-bearing entry, or keep them as expansion artifacts.
-   Stage 9.2 remains historical only.
+2. **Decide the benchmark status of the Stage 9.3, 9.4, 9.5, 10.1, and 10.2 datasets** — lock
+   each as a separate benchmark with its own SHA256-bearing entry, or keep them as expansion
+   artifacts. Stage 9.2 remains historical only.
 3. **Keep the Stage 8.2 benchmark frozen** — create a new dataset version and lock entry rather
    than editing the current artifact.
-4. **Treat Stage 10.2 as the current spatial candidate, not a conclusion.** The radius sweep is
-   done and selects 12 Å, but that is the grid edge; run a full ablation against the 13 frozen
-   features, an importance-stability check across seeds, and radii above 12 Å before promoting
-   the spatial features into a new benchmark.
-5. **Run external validation** on proteins not used for feature or radius selection, test
-   probability calibration on truly unseen proteins, and include within-protein and median
-   per-protein metrics rather than relying on pooled ROC.
-6. **Pin ML dependencies** (`scikit-learn`, `xgboost`, `scipy`, `numpy`, `pandas`) before running
-   experiments from a clean checkout.
+4. **Treat the Stage 10.2 features and the Stage 10.3 golden LightGBM as internal candidates,
+   not conclusions.** The radius sweep is done and selects 12 Å, but that is the grid edge; the
+   tuning selected a configuration on the same 102 proteins used to score it. Run a full ablation
+   against the 13 frozen features, an importance-stability check across seeds, radii above 12 Å,
+   and repeated/nested CV with an independently chosen candidate pool before promoting either the
+   spatial features or the tuned configuration into a new benchmark.
+5. **Run external validation** on proteins not used for feature, radius, or hyperparameter
+   selection; test probability calibration on truly unseen proteins; include within-protein and
+   median per-protein metrics rather than relying on pooled ROC; and confirm that the tuned
+   LightGBM still beats an untuned baseline out of sample.
+6. **Pin ML dependencies** (`scikit-learn`, `xgboost`, `lightgbm`, `scipy`, `numpy`, `pandas`)
+   before running experiments from a clean checkout.
 7. **Evaluate broader label policies** (GO terms, EC numbers) only after the expanded dataset
    exists; the current A+B benchmark must remain comparable.
 
@@ -835,9 +953,12 @@ LOGO-CV on 102 folds without additional downloads; Stage 10.1 computed radius-8.
 neighborhood features for all 102 proteins from the existing CIF/PAE cache, producing a 5.3 MB
 CSV and re-running LOGO-CV with 16 features; and Stage 10.2 computed four radii for all 102
 proteins and ran 102 outer LOGO folds with an inner 3-fold calibrator for each of two models and
-two calibration methods, producing a 9.7 MB CSV. All were processed end-to-end on a standard
-machine with plain Python
-libraries (Biopython, pandas, NumPy, scikit-learn, XGBoost, matplotlib). **No GPU or HPC resource
+two calibration methods, producing a 9.7 MB CSV; and Stage 10.3 evaluated 101 unique
+configurations over 102 LOGO folds plus a nested 102 × 5 run, using single-threaded
+XGBoost/LightGBM for determinism and producing only JSON/NPZ evaluation artifacts. All were
+processed end-to-end on a standard machine with plain Python
+libraries (Biopython, pandas, NumPy, scikit-learn, XGBoost, LightGBM, matplotlib). **No GPU or
+HPC resource
 is required to run or reproduce the current pipeline** — a laptop suffices.
 
 Future stages may differ. If the project moves toward larger-scale protein representation
@@ -874,7 +995,7 @@ a technical guide to Biopython's role in modern bioinformatics and AI4Bio.
 
 | Document | Contents |
 |---|---|
-| [`docs/PROJECT_STATUS.md`](docs/PROJECT_STATUS.md) | Single source of truth for project status; §16–§21 contain the Stage 9.2, 9.3, 9.4, 9.5, 10.1, and 10.2 audits |
+| [`docs/PROJECT_STATUS.md`](docs/PROJECT_STATUS.md) | Single source of truth for project status; §16–§22 contain the Stage 9.2, 9.3, 9.4, 9.5, 10.1, 10.2, and 10.3 audits |
 | [`docs/BENCHMARK_DATASET_LOCK.md`](docs/BENCHMARK_DATASET_LOCK.md) | Frozen benchmark contract, label policy, fold map, and Stage 8.2 metrics |
 | [`docs/DATASET_PLAN.md`](docs/DATASET_PLAN.md) | Dataset source plan and candidate selection |
 | [`docs/TAHAP_5_AFDB_DOWNLOAD_REPORT.md`](docs/TAHAP_5_AFDB_DOWNLOAD_REPORT.md) | Stage 5 download and integrity report |

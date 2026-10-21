@@ -9,7 +9,7 @@ diubah, tidak ada eksperimen baru dijalankan, tidak ada unduhan dilakukan.
 
 ```
 PROJECT STATUS:
-STAGE 1–10.2 AUDITED — STAGE 8.2 BENCHMARK LOCKED
+STAGE 1–10.3 AUDITED — STAGE 8.2 BENCHMARK LOCKED
 DATA PIPELINE: VALIDATED
 BIOLOGICAL ML: BASELINE REPRODUCED — NO GENERALIZATION CLAIM
 ```
@@ -110,9 +110,40 @@ BIOLOGICAL ML: BASELINE REPRODUCED — NO GENERALIZATION CLAIM
 > menciptakan tie dan mengubah 34/43 fold XGB. Tidak ada commit/push untuk Stage 10.2. Rincian
 > di §21.
 >
-> Bagian 1, 2, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20 (Stage 10.1), 21 (Stage 10.2,
-> baru), dan 22 di bawah sudah diperbarui; bagian 3–8 tetap merupakan catatan historis
-> Stage 1–6.
+> **Update 2026-10-21 — Stage 10.3.** Tuning hiperparameter berarah dan perbandingan strategi
+> imbalansi dijalankan pada dataset terkalibrasi radius 12 Å (16 fitur latih; 102 protein;
+> 55.503 baris; 955 positif = 1,7206%; 78 fold evaluable). Total **101 konfigurasi unik**
+> dievaluasi dengan 102-fold LOGO-CV: 44 konfigurasi XGBoost (2 pass), 46 LightGBM (2 pass),
+> dan 8 Random Forest (1 pass), ditambah tiga konfigurasi hasil seleksi-pass yang dievaluasi
+> ulang sebagai konfigurasi tetap. Perbandingan imbalansi menunjukkan **tidak ada strategi
+> yang menang di semua metrik**: `scale_pos_weight=1` memberi pooled PR dan kalibrasi terbaik
+> pada baseline pass 1 (XGB gain 5,71×, Brier 0,0162; LGBM 5,90×, 0,0162), sedangkan bobot
+> besar menaikkan median PR per-protein tetapi menurunkan pooled PR, between-protein AUC, dan
+> Brier (XGB spw=100: median PR 0,1272 tetapi gain 5,06×, Brier 0,2747; LGBM spw=100: 0,1305,
+> 5,45×, 0,2354). `is_unbalance=True` identik dengan `scale_pos_weight="ratio"` pada LightGBM.
+> Untuk Random Forest, `class_weight=None` mengungguli `balanced`/`balanced_subsample` pada
+> median PR (0,1301 vs 0,1029/0,1051), pooled PR (0,0912 vs 0,0692/0,0711), dan kalibrasi
+> (Brier 0,0164 vs 0,1942/0,1902). **Golden model** dipilih dengan aturan pra-deklarasi
+> (median PR tertinggi; dalam 0,005 pooled gain tertinggi; dalam 0,05× Brier terendah):
+> **LightGBM `lgbm__032c38ffe37f`** (`max_depth=6`, `num_leaves=31`, `learning_rate=0,05`,
+> `subsample=0,75`, `colsample_bytree=0,9`, `min_child_samples=20`,
+> `scale_pos_weight=20`). Metrik LOGO-CV: median ROC **0,8411** (IQR 0,1446) / PR **0,1693**
+> (IQR 0,1737); pooled ROC **0,8131** / PR **0,1142** / gain **6,63×**; within-protein
+> z-scored ROC **0,7709**; Brier **0,0520**; ECE **0,1228**; mean predicted 0,1400 vs
+> prevalensi 0,0172. XGBoost terbaik menurut aturan yang sama: `xgb__496d370641fb`
+> (median ROC 0,8303 / PR 0,1508; pooled 0,8156 / 0,1156 / 6,72×; within-z 0,7662;
+> Brier 0,0209; ECE 0,0373). Nested LOGO-CV dengan inner `GroupKFold(5)` memberi median ROC
+> 0,8303 / PR 0,1550, pooled ROC 0,7961 / PR 0,0784 / gain 4,55×, within-z 0,7680, Brier
+> 0,0340; prosedur memilih XGB 81/102 fold dan LGBM 11+10 fold. Gap median PR global vs
+> nested (0,1693 → 0,1550) dan pooled gain (6,63× → 4,55×) mengukur optimisme seleksi;
+> kandidat nested masih berasal dari tuning global sehingga tetap optimistis. **Tidak ada
+> validasi eksternal**, tidak ada dataset baru, dan kalibrasi tidak di-fit ulang — Brier/ECE
+> adalah skor mentah model. Nama "Stage 10.3" di sini adalah tuning internal, bukan validasi
+> eksternal yang sebelumnya direncanakan (D14). Rincian di §22.
+>
+> Bagian 1, 2, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20 (Stage 10.1), 21 (Stage 10.2),
+> 22 (Stage 10.3, baru), dan 23 di bawah sudah diperbarui; bagian 3–8 tetap merupakan catatan
+> historis Stage 1–6.
 
 ---
 
@@ -192,6 +223,19 @@ Yang **sudah tercapai** dan terverifikasi:
   Isotonic dan sigmoid memperbaiki skala probabilitas absolut (Brier XGB 0,1820 → 0,0163;
   ECE 0,3569 → 0,0016) tetapi **tidak** memperbaiki pooled ROC/PR, within-protein ROC,
   atau inflasi antar-protein; sigmoid rank-preserving, isotonic tidak (§21).
+- **Stage 10.3:** tuning hiperparameter berarah + perbandingan strategi imbalansi pada dataset
+  radius 12 Å yang sama (16 fitur latih; 102 protein; 55.503 baris; 955 positif = 1,7206%).
+  Sebanyak **101 konfigurasi unik** dievaluasi dengan 102-fold LOGO-CV: XGBoost 44, LightGBM 46,
+  Random Forest 8, ditambah 3 konfigurasi seleksi-pass yang dihitung ulang sebagai konfigurasi
+  tetap. **Golden model** menurut aturan pra-deklarasi (median PR → pooled gain → Brier):
+  **LightGBM `lgbm__032c38ffe37f`** (`max_depth=6`, `learning_rate=0,05`, `subsample=0,75`,
+  `colsample_bytree=0,9`, `scale_pos_weight=20`). LOGO-CV: median ROC **0,8411** / PR
+  **0,1693**; pooled ROC **0,8131** / PR **0,1142** / gain **6,63×**; within-protein z-scored
+  ROC **0,7709**; Brier **0,0520**; ECE **0,1228**. XGBoost terbaik `xgb__496d370641fb`:
+  median ROC 0,8303 / PR 0,1508; pooled 0,8156 / 0,1156 / 6,72×; Brier 0,0209. Nested
+  LOGO-CV (inner `GroupKFold(5)`) menurunkan median PR ke 0,1550 dan pooled gain ke 4,55×,
+  mengukur optimisme seleksi. Tidak ada dataset baru, tidak ada kalibrasi ulang, dan tetap
+  **bukan** validasi eksternal (§22).
 
 Yang **BELUM tercapai** (dan tidak diklaim):
 
@@ -199,29 +243,36 @@ Yang **BELUM tercapai** (dan tidak diklaim):
   heterogen antar-protein: pooled ROC-AUC 0,5368 (XGB) / 0,5062 (RF), sedangkan pooled
   PR-AUC 0,0916 / 0,1028 terhadap baseline prevalensi 0,0419. Stage 9.5 mencapai pooled
   ROC 0,7476 (XGB/RF); Stage 10.1 menambah fitur spasial dan menaikkannya ke 0,7676
-  (XGB) / 0,7568 (RF), dengan median per-protein 0,7786 / 0,7724. Kenaikan ini juga
-  terlihat pada within-protein z-scored ROC (0,7156 / 0,7059), tetapi seluruh evaluasi
-  masih **internal** dan belum ada holdout eksternal; pooled ROC tetap dipengaruhi
-  perbedaan antar-protein (§19.4, §20.6). Tidak ada klaim kemampuan generalisasi.
+  (XGB) / 0,7568 (RF), dengan median per-protein 0,7786 / 0,7724. Stage 10.2 menaikkan
+  lagi ke pooled ROC 0,7956 / 0,7759. Stage 10.3 memilih golden LightGBM dengan median PR
+  0,1693, pooled ROC 0,8131 / PR 0,1142 / gain 6,63×, tetapi nested LOGO-CV hanya
+  memberi median PR 0,1550 / gain 4,55×. Seluruh evaluasi masih **internal** dan belum
+  ada holdout eksternal; pooled ROC tetap dipengaruhi perbedaan antar-protein
+  (§19.4, §20.6, §21.6, §22.6). Tidak ada klaim kemampuan generalisasi.
 - **Skala masih belum memadai untuk klaim statistik.** Stage 9.5/10.1 berisi 102 protein
   / 55.503 residu, tetapi hanya 955 positif (1,72%), 24 protein tanpa positif, dan residu
   dalam satu protein sangat berkorelasi. Ini bukan 55.503 sampel independen; komposisi
   protein juga masih didominasi protein larut/globular dan belum diseleksi sebagai
-  holdout eksternal. Stage 10.1 menambah fitur, **bukan** protein baru.
+  holdout eksternal. Stage 10.1 menambah fitur dan Stage 10.3 menambah tuning/konfigurasi,
+  **bukan** protein baru.
 - **Belum ada validasi eksternal** pada protein baru, struktur eksperimen, atau dataset
   independen. Stage 10.2 menguji kalibrasi isotonic/sigmoid secara out-of-fold pada 102
   protein yang sama, bukan kalibrasi pada protein eksternal. Stage 9.4/9.5 adalah
-  pembesaran/pembersihan dataset, Stage 10.1 adalah feature engineering, dan Stage 10.2
-  adalah sweep radius + kalibrasi internal; keempatnya **bukan** validasi eksternal.
+  pembesaran/pembersihan dataset, Stage 10.1 adalah feature engineering, Stage 10.2
+  adalah sweep radius + kalibrasi internal, dan Stage 10.3 adalah tuning hiperparameter +
+  pemilihan golden model pada protein yang sama; kelimanya **bukan** validasi eksternal.
 - **Label masih terbatas pada A+B.** Belum ada label multi-kelas, GO terms, EC numbers,
   atau skema label alternatif.
-- **Stage 9.2, 9.3, 9.4, 9.5, 10.1, dan 10.2 bukan validasi eksternal dan bukan klaim
-  generalisasi.** Stage 9.2/9.3 berisi 14 protein / 129 positif; Stage 9.4 berisi 103
-  protein / 959 positif; Stage 9.5/10.1/10.2 berisi 102 protein / 955 positif. Pooled ROC
-  Stage 10.2 (0,7956 XGB / 0,7759 RF) lebih tinggi dari Stage 8.2 dan Stage 10.1, tetapi
-  dataset, fitur, radius, dan prevalensinya berbeda, dan pooled ROC dipengaruhi perbedaan
-  skor antar-protein. Kalibrasi Stage 10.2 hanya memperbaiki skala probabilitas, bukan
-  peringkat. Belum ada holdout eksternal.
+- **Stage 9.2, 9.3, 9.4, 9.5, 10.1, 10.2, dan 10.3 bukan validasi eksternal dan bukan
+  klaim generalisasi.** Stage 9.2/9.3 berisi 14 protein / 129 positif; Stage 9.4 berisi
+  103 protein / 959 positif; Stage 9.5/10.1/10.2/10.3 berisi 102 protein / 955 positif.
+  Pooled ROC Stage 10.3 (0,8131 golden LightGBM) lebih tinggi dari Stage 8.2, 10.1, dan
+  10.2, tetapi dataset, fitur, radius, dan prevalensinya sama dengan Stage 10.2 — yang
+  berubah hanya konfigurasi model — dan pooled ROC tetap dipengaruhi perbedaan skor
+  antar-protein. Kalibrasi Stage 10.2 hanya memperbaiki skala probabilitas, bukan
+  peringkat; Stage 10.3 tidak mengulang kalibrasi, sehingga Brier/ECE-nya adalah skor
+  mentah (0,0520/0,1228) dan tidak sebanding dengan skor terkalibrasi Stage 10.2. Belum
+  ada holdout eksternal.
 - **P11532 sudah dikeluarkan, bukan diperbaiki.** Tidak ada entri AFDB full-length
   kanonik untuk P11532 (hanya 14 isoform; §18.3), sehingga Stage 9.5 menyelesaikannya
   dengan **exclusion**. Rebuild dari sumber struktur full-length tetap belum dilakukan;
@@ -231,14 +282,18 @@ Yang **BELUM tercapai** (dan tidak diklaim):
 Posisi jujur: **infrastruktur data selesai dan tervalidasi; benchmark ML baseline sudah
 ada dan terverifikasi, ditambah ekspansi/realignment Stage 9.2–9.3, production scaling
 Stage 9.4 (103 protein), pembersihan Stage 9.5 (102 protein, P11532 dikeluarkan), feature
-engineering spasial Stage 10.1, dan sweep radius + kalibrasi out-of-fold Stage 10.2 yang
-nyata dan diaudit — tetapi belum ada bukti generalisasi biologis.** Dataset Stage 10.2
-memakai radius 12 Å yang dipilih lewat aturan pra-deklarasi dan meningkatkan metrik
-internal lebih lanjut (within-protein z-scored ROC 0,7495 XGB / 0,7338 RF). Kalibrasi
-isotonic/sigmoid berhasil memperbaiki skala probabilitas absolut (ECE 0,357 → 0,002), tetapi
-tidak memperbaiki diskriminasi peringkat atau inflasi antar-protein. Pooled ROC masih
-dipengaruhi perbedaan antar-protein, dan tidak ada holdout eksternal. Fokus berikutnya
-adalah validasi eksternal pada protein baru — bukan mengklaim performa.
+engineering spasial Stage 10.1, sweep radius + kalibrasi out-of-fold Stage 10.2, dan tuning
+hiperparameter + pemilihan golden model Stage 10.3 yang nyata dan diaudit — tetapi belum ada
+bukti generalisasi biologis.** Dataset Stage 10.2 memakai radius 12 Å yang dipilih lewat
+aturan pra-deklarasi dan meningkatkan metrik internal lebih lanjut (within-protein z-scored
+ROC 0,7495 XGB / 0,7338 RF). Stage 10.3 menaikkan median PR golden LightGBM ke 0,1693 dan
+within-z ke 0,7709 pada 102 protein yang sama, tetapi nested LOGO-CV menurunkan median PR
+ke 0,1550 dan pooled gain ke 4,55× — bukti bahwa sebagian kenaikan berasal dari optimisme
+seleksi. Kalibrasi isotonic/sigmoid berhasil memperbaiki skala probabilitas absolut (ECE
+0,357 → 0,002), tetapi tidak memperbaiki diskriminasi peringkat atau inflasi antar-protein;
+Stage 10.3 tidak mengulang kalibrasi. Pooled ROC masih dipengaruhi perbedaan antar-protein,
+dan tidak ada holdout eksternal. Fokus berikutnya adalah validasi eksternal pada protein
+baru — bukan mengklaim performa.
 
 ---
 
@@ -251,7 +306,7 @@ adalah validasi eksternal pada protein baru — bukan mengklaim performa.
 | Validasi integritas data | **BERHASIL** | SHA256 dihitung ulang & cocok; sekuens 7/7 MATCH |
 | Feature extraction | **BERHASIL** | 1098 × 29 kolom, 24/24 test PASS |
 | Reproducibility | **BERHASIL** | Output dataset byte-identical antar-run |
-| Predictive biological AI / ML | **BASELINE ADA; GENERALISASI BELUM** | Stage 8.2 LOGO-CV direproduksi (pooled ROC 0,5368/0,5062); Stage 10.2 XGB pooled ROC 0,7956 / RF 0,7759, within-protein 0,7495/0,7338, tetapi masih evaluasi internal dan bukan perbandingan apple-to-apple (§19.4, §20.6, §21.7); median/IQR Stage 8.2 di `BENCHMARK_DATASET_LOCK.md` |
+| Predictive biological AI / ML | **BASELINE ADA; GENERALISASI BELUM** | Stage 8.2 LOGO-CV direproduksi (pooled ROC 0,5368/0,5062); Stage 10.2 XGB pooled ROC 0,7956 / RF 0,7759, within-protein 0,7495/0,7338; Stage 10.3 golden LightGBM pooled ROC 0,8131 / PR 0,1142 / gain 6,63×, median PR 0,1693, within-z 0,7709, tetapi nested LOGO-CV hanya 0,1550 / 4,55×. Semua masih evaluasi internal dan bukan perbandingan apple-to-apple (§19.4, §20.6, §21.7, §22.6); median/IQR Stage 8.2 di `BENCHMARK_DATASET_LOCK.md` |
 | Label biologis (y) | **ADA — A+B** | `target_y` = UniProt Active site + Binding site; 46 positif (Stage 7), 129 (Stage 9.2/9.3), 959 (Stage 9.4), 955 (Stage 9.5); audit label 0 mismatch di kelima dataset |
 | Ekspansi dataset (Stage 9.2) | **AUDITED — REAL AFDB, DENGAN CATATAN** | 14 protein / 3.960 residu; fitur struktural & label cocok dengan sumber; 2 definisi fitur menyimpang dari Stage 8.2 (§16) |
 | Realignment dataset (Stage 9.3) | **AUDITED — DEFINISI FROZEN** | 14 protein / 3.960 residu; H = `basic`; `pae_local_mean_k10` = `\|i-j\| ≤ 10, j ≠ i`; 0 mismatch fitur/label; median/pooled/gain reproduce, IQR PR tidak (§17) |
@@ -259,6 +314,7 @@ adalah validasi eksternal pada protein baru — bukan mengklaim performa.
 | Cleansed production dataset (Stage 9.5) | **AUDITED — 102 PROTEIN, BERSIH** | 55.503 × 12; 102 protein; 955 positif (1,72%); 0 sel kosong/unmodeled; 78 fold evaluable; XGB median ROC 0,7371, pooled 0,7476 / 0,0640 / 3,72×; RF median 0,7330, pooled 0,7476 / 0,0608 / 3,53×; P11532 dikeluarkan (§19) |
 | Spatial feature dataset (Stage 10.1) | **AUDITED — 55.503 × 15, 0 NaN** | 3 fitur radius 8,0 Å; 102 protein; 955 positif; 78 fold evaluable; XGB median ROC 0,7786, pooled 0,7676 / 0,0759 / 4,41×; RF median 0,7724, pooled 0,7568 / 0,0668 / 3,88×; within-protein 0,7156/0,7059; 166.509 nilai baru diverifikasi ulang, 0 mismatch (§20) |
 | Radius sweep & calibrated dataset (Stage 10.2) | **AUDITED — 55.503 × 21, 0 NaN** | Radius 6/8/10/12 Å; **12 Å terpilih**; 78 fold evaluable; XGB median ROC 0,8120, pooled 0,7956 / 0,0881 / 5,12×; RF median 0,8089, pooled 0,7759 / 0,0711 / 4,13×; within-protein 0,7495/0,7338; Friedman p < 1,5e-06; kalibrasi isotonic/sigmoid memperbaiki Brier/ECE tetapi tidak memperbaiki pooled/within dan tidak menutup gap antar-protein; 6 kolom OOF diverifikasi, 0 mismatch (§21) |
+| Tuning & golden model (Stage 10.3) | **AUDITED — 101 KONFIGURASI, GOLDEN LIGHTGBM** | 102-fold LOGO-CV / 78 evaluable; 16 fitur latih; XGB 44 + LGBM 46 + RF 8 konfigurasi (+3 re-eval konfigurasi seleksi-pass); golden `lgbm__032c38ffe37f`: median ROC 0,8411 / PR 0,1693, pooled ROC 0,8131 / PR 0,1142 / gain 6,63×, within-z 0,7709, Brier 0,0520, ECE 0,1228; nested LOGO-CV median PR 0,1550 / gain 4,55×; bukan validasi eksternal (§22) |
 | Klaim ilmiah/biologis | **TIDAK ADA (sengaja)** | Semua laporan menyatakan fitur = prediksi model; baseline bukan klaim fungsi |
 
 Ringkas: **A/B/C tercapai; D ada sebagai baseline terverifikasi tetapi belum
@@ -465,14 +521,15 @@ Audit independen Stage 9.2–9.4 dibahas di §16–§18; verifikasi Stage 9.5 di
 | `src/extract_multi_protein_features.py` | Ekstraksi fitur multi-protein (Stage 6) |
 | `src/test_multi_protein_features.py` | Test Stage 6 — 24 check |
 
-**Tidak ada script ML di `src/`.** Baseline Stage 8.2, evaluasi Stage 9.x, dan ekstraksi
-fitur spasial Stage 10.1 dijalankan dengan harness verifikasi eksternal (temporary, di
-luar repo); belum ada training/extractor script yang di-commit. Tidak ada
-PyTorch/TensorFlow/CUDA.
+**Tidak ada script ML di `src/`.** Baseline Stage 8.2, evaluasi Stage 9.x, ekstraksi fitur
+spasial Stage 10.1, sweep radius/kalibrasi Stage 10.2, dan tuning + pemilihan golden model
+Stage 10.3 dijalankan dengan harness verifikasi eksternal (temporary, di luar repo); belum
+ada training/extractor/tuning script yang di-commit. Tidak ada PyTorch/TensorFlow/CUDA.
 Environment: `.venv` Python **3.12.10**; `requirements.txt` hanya biopython, pandas,
-numpy, matplotlib, ipykernel, nbclient. Verifikasi Stage 8.2 memakai scikit-learn
-1.9.1, xgboost 3.4.1, scipy 1.18.1, dan numpy 2.5.4 yang dipasang sementara di luar
-`.venv` — **belum** dipin di `requirements.txt` (lihat `BENCHMARK_DATASET_LOCK.md` §8).
+numpy, matplotlib, ipykernel, nbclient. Verifikasi Stage 8.2 dan Stage 10.3 memakai
+scikit-learn 1.9.1, xgboost 3.4.1, lightgbm 4.6.0, scipy 1.18.1, pandas 3.0.6, dan numpy
+2.5.4 yang dipasang sementara di luar `.venv` — **belum** dipin di `requirements.txt`
+(lihat `BENCHMARK_DATASET_LOCK.md` §8).
 
 ### 10.4 SHA256 terverifikasi (top-level)
 
@@ -497,6 +554,8 @@ e47b3635a7e904107094afde02a1ece656e25491c8721865501b6a76562b05a3  results/datase
 
 # Calibrated Stage 10.2 (dihitung ulang 2026-10-20; radius 12,0 A + 6 skor OOF)
 2c4bcb3da7dfe4de82a95902f6fa3156e656cb5aece521b54d427cb42220ea3a  results/dataset/production_dataset_100_calibrated.csv
+
+# Stage 10.3 (2026-10-21): tidak ada dataset baru; hash calibrated di atas diverifikasi ulang
 
 # Output Stage 6 (cocok dengan docs/TAHAP_6_MULTI_PROTEIN_FEATURE_REPORT.md §6)
 390462a42d8befe5588b1019d51b4c4282433b0f712c4377e5191883983d3c1d  multi_protein_residue_features.csv
@@ -719,6 +778,9 @@ Diurutkan dari yang paling berdampak pada tahap berikutnya.
 | Reproducibility Stage 10.2 — radius sweep | **DIHITUNG LANGSUNG, 4 RADIUS × 2 MODEL** | 78 fold evaluable pada setiap radius; r6/r8/r10/r12; XGB median ROC 0,7437/0,7786/0,8049/0,8120; RF 0,7331/0,7724/0,7946/0,8089; Friedman ROC XGB p=1,49e-06, RF p=3,32e-14; environment sama; fitur radius 6/8/10/12 direproduksi independen (0 mismatch) |
 | Reproducibility Stage 10.2 — kalibrasi | **OUT-OF-FOLD, INNER GROUPKFOLD 3** | Per fold LOGO: base model pada 101 protein latih, kalibrator pada inner out-of-fold (GroupKFold 3, grouped by protein), `CalibratedClassifierCV(..., ensemble=False)`; protein uji tidak pernah dipakai. 78 fold; Brier/ECE/mean predicted/slope dan pooled/within-z direproduksi dari CSV terkalibrasi; selisih metrik probabilitas < 1e-10 |
 | Reproducibility Stage 10.2 — dataset | **VERIFIKASI INDEPENDEN** | 55.503 × 21; 15 kolom fitur string-identik dengan CSV r12; 6 kolom OOF = npz sumber (selisih maks ≤ 5e-11); 0 NaN; LF murni; SHA256 `2c4bcb3d…ea3a`; rank pooled RF isotonic bergeser ~1e-6 hanya karena pembulatan 10 desimal menciptakan tie |
+| Reproducibility Stage 10.3 — tuning | **DIHITUNG LANGSUNG; 101 KONFIGURASI** | 102 fold / 78 evaluable; 44 XGB + 46 LGBM + 8 RF (+3 re-eval); LightGBM pass 1 dijalankan ulang penuh dan 23/23 konfigurasi mereproduksi seluruh 8 metrik hingga 1e-12; tiga konfigurasi seleksi-pass (derived) dievaluasi ulang sebagai konfigurasi tetap; environment sama dengan Stage 10.2 |
+| Reproducibility Stage 10.3 — golden | **EVAL ULANG KONFIGURASI TETAP, OOF IDENTIK** | `lgbm__032c38ffe37f`; 102 fold / 78 evaluable; median ROC 0,8411 / PR 0,1693; pooled ROC 0,8131 / PR 0,1142 / gain 6,6345×; within-z 0,7709; Brier 0,0520; ECE 0,1228; OOF 55.503 baris, 0 NaN, 955 positif; perbedaan vs OOF tuning = 0,0 (bit-identik) |
+| Reproducibility Stage 10.3 — nested | **NESTED LOGO-CV, INNER GROUPKFOLD 5** | Outer 102 fold; 4 kandidat (3 efektif unik); median ROC 0,8303 / PR 0,1550; pooled ROC 0,7961 / PR 0,0784 / gain 4,5549×; within-z 0,7680; Brier 0,0340; XGB dipilih 81 fold, LGBM 11+10; kandidat berasal dari tuning global sehingga masih mengandung komponen optimistis |
 
 Catatan: satu-satunya artefak non-deterministik yang diketahui adalah
 `data/alphafold_db/metadata/download_log.txt` (timestamp + path absolut lokal) — file
@@ -728,9 +790,9 @@ log, bukan output dataset, dan tidak dipakai sebagai input analisis.
 
 ## 15. Current Project Position
 
-**Posisi: Stage 10.2 dieksekusi dan diaudit — sweep radius memilih 12 Å dan dataset
-terkalibrasi 102 protein / 55.503 residu tersedia; benchmark Stage 8.2 tetap terkunci
-dan tidak berubah.**
+**Posisi: Stage 10.3 dieksekusi dan diaudit — tuning hiperparameter + perbandingan
+imbalansi pada dataset terkalibrasi 12 Å memilih golden LightGBM `lgbm__032c38ffe37f`;
+benchmark Stage 8.2 tetap terkunci dan tidak berubah.**
 
 - Stage 1–6 selesai dan terdokumentasi; concern C1, C2, C4, dan C5 sudah ditutup
   untuk benchmark (C3 tetap).
@@ -774,13 +836,34 @@ dan tidak berubah.**
   (15 fitur radius 12 Å + 6 skor OOF), **0 NaN**, LF murni, 9.667.972 B, SHA256
   `2c4bcb3d…ea3a`; 15 kolom fitur string-identik dengan CSV r12 dan 6 kolom OOF cocok
   dengan npz sumber. Kolom OOF adalah artefak audit, bukan fitur latih (C28).
-- Dataset AFDB, dataset Stage 7, lock Stage 8.2, dan dataset Stage 9.x/10.1 **tidak
-  diubah**; Stage 10.2 adalah artefak baru.
-- Gate berikutnya: putuskan status benchmark Stage 9.3–10.2, jalankan ablasi dan
+- **Stage 10.3 menyelesaikan tuning + pemilihan golden:** **101 konfigurasi unik**
+  (XGB 44, LGBM 46, RF 8, plus 3 re-eval konfigurasi derived) dievaluasi pada 102-fold
+  LOGO-CV / 78 fold evaluable dengan 16 fitur latih. Perbandingan imbalansi: bobot kelas
+  besar menaikkan median PR per-protein tetapi menurunkan pooled PR/gain, between-protein
+  AUC, dan kalibrasi; `scale_pos_weight=1` unggul pada pooled PR dan Brier di baseline
+  pass 1, sedangkan RF justru terbaik tanpa `class_weight`.
+- **Golden model Stage 10.3:** LightGBM `lgbm__032c38ffe37f` (`max_depth=6`,
+  `num_leaves=31`, `learning_rate=0,05`, `subsample=0,75`, `colsample_bytree=0,9`,
+  `scale_pos_weight=20`). Median ROC **0,8411** / PR **0,1693**; pooled ROC **0,8131** /
+  PR **0,1142** / gain **6,63×**; within-z **0,7709**; Brier **0,0520**; ECE **0,1228**.
+  XGBoost terbaik `xgb__496d370641fb`: median ROC 0,8303 / PR 0,1508, pooled 0,8156 /
+  0,1156 / 6,72×, Brier 0,0209. RF terbaik `rf__7d4e21346df6`: median PR 0,1256,
+  pooled PR 0,0945 / 5,49×, Brier 0,0162.
+- **Nested LOGO-CV Stage 10.3:** inner `GroupKFold(5)`, kandidat dari tuning global.
+  Median ROC 0,8303 / PR 0,1550; pooled ROC 0,7961 / PR 0,0784 / gain 4,55×; within-z
+  0,7680; Brier 0,0340. Gap vs evaluasi global (median PR 0,1693 → 0,1550; gain 6,63× →
+  4,55×) mengukur optimisme seleksi; kandidat tetap berasal dari tuning global sehingga
+  nested masih optimistis.
+- **Kalibrasi tidak diulang di Stage 10.3.** Brier/ECE golden (0,0520/0,1228) adalah skor
+  mentah dan tidak sebanding dengan skor terkalibrasi Stage 10.2 (0,0163/0,0016). Stage
+  10.2 sudah menunjukkan kalibrasi memperbaiki skala, bukan peringkat.
+- Dataset AFDB, dataset Stage 7, lock Stage 8.2, dan dataset Stage 9.x/10.1/10.2 **tidak
+  diubah**; Stage 10.3 tidak membuat dataset baru — hanya artefak evaluasi di luar repo.
+- Gate berikutnya: putuskan status benchmark Stage 9.3–10.3, jalankan ablasi dan
   importance-stability, lalu validasi eksternal pada protein baru; kalibrasi sudah
   diuji internal tetapi **belum** lintas-protein eksternal. Belum ada klaim generalisasi.
-- **Belum di-commit:** dataset dan dokumentasi Stage 10.2 ada di working tree dan
-  menunggu persetujuan user; tidak ada commit/push pada sesi ini.
+- **Belum di-commit:** dokumentasi Stage 10.3 ada di working tree dan menunggu
+  persetujuan user; tidak ada commit/push pada sesi ini.
 
 ---
 
@@ -1858,11 +1941,345 @@ dan empat CSV fitur, `radius_comparison.json`, `calibration_comparison.json`,
 
 ---
 
-## 22. Recommended Next Step — External Validation
+## 22. Stage 10.3 — Hyperparameter Tuning, Imbalance Strategy & Golden Model Selection (Audited 2026-10-21)
+
+**Status: AUDITED — TUNING INTERNAL DAN PEMILIHAN GOLDEN; BUKAN VALIDASI EKSTERNAL.**
+
+### 22.1 Artifact identity
+
+| Aspek | Nilai |
+|---|---|
+| Dataset | `results/dataset/production_dataset_100_calibrated.csv` |
+| SHA256 / ukuran | `2c4bcb3da7dfe4de82a95902f6fa3156e656cb5aece521b54d427cb42220ea3a`; 9.667.972 B; LF murni |
+| Bentuk | 55.503 baris × 21 kolom (15 kolom identifier/label/fitur + 6 kolom skor OOF audit) |
+| Protein / positif | 102 protein; 955 positif; prevalensi **1,7206277138%**; 24 protein zero-positive |
+| Fold evaluable | **78** dari 102 fold LOGO |
+| Fitur latih | **16**: 7 struktural + 3 spasial radius 12 Å + 6 one-hot asam amino |
+| Dikecualikan | 6 kolom `oof_*` (artefak audit, bukan fitur latih; C28) |
+| Environment | Python 3.12.10; numpy 2.5.4; pandas 3.0.6; scipy 1.18.1; scikit-learn 1.9.1; xgboost 3.4.1; lightgbm 4.6.0 |
+| Repo | commit `f995c8c`; working tree hanya `download/` yang untracked dan sudah ada sebelumnya |
+| Dataset baru | **Tidak ada** — seluruh keluaran Stage 10.3 adalah artefak evaluasi di luar tracked tree |
+
+Dataset dan urutan baris diverifikasi ulang: label dan `uniprot_id` pada OOF harus identik
+dengan CSV terkalibrasi (assert), OOF berisi 55.503 nilai, 0 NaN, 955 positif, 102 protein.
+Hash dataset sama dengan Stage 10.2; Stage 10.3 tidak menulis ulang dataset.
+
+### 22.2 Experimental design
+
+**LOGO-CV.** Setiap fold melatih model pada 101 protein dan memprediksi satu protein yang
+tidak pernah dilihat. Dari 102 fold, **78 evaluable** (fold dengan minimal satu positif dan
+satu negatif); 24 protein zero-positive tetap dilaporkan sebagai `unevaluable`.
+
+**Tuning berarah (OFAT).** XGBoost dan LightGBM menjalani **2 pass**; Random Forest **1 pass**.
+Setiap pass mengevaluasi satu perubahan parameter terhadap konfigurasi basis, lalu semua
+perubahan yang diterima secara individual diterapkan bersamaan. Grid yang dipakai:
+
+| Model | Pass | Konfigurasi/pass | Parameter yang dipindai |
+|---|---:|---:|---|
+| XGBoost | 2 | 22 | `scale_pos_weight` [1, 5, 10, 20, 40, `ratio`, 80, 100]; `max_depth` 2–6; `learning_rate` [0,01, 0,02, 0,03, 0,05, 0,08]; `subsample` [0,6, 0,75, 0,9, 1,0]; `colsample_bytree` [0,6, 0,75, 0,9, 1,0] |
+| LightGBM | 2 | 23 | sama dengan XGBoost, ditambah `is_unbalance=True`; `num_leaves=31`, `min_child_samples=20` tetap |
+| Random Forest | 1 | 8 | `class_weight` [None, `balanced`, `balanced_subsample`]; `max_depth` 3–6; `max_features` [`sqrt`, 0,5, 1,0] |
+
+**Aturan penerimaan.** Perubahan diterima bila **median PR meningkat > 0,002**, atau bila
+selisihnya dalam 0,002 **dan** pooled gain meningkat > 0,05×. Jika seri, Brier lebih rendah
+menang. Aturan ini sengaja memprioritaskan median PR per-protein, dengan pooled gain sebagai
+penjaga; konsekuensinya beberapa perubahan diterima meskipun pooled gain turun.
+
+**Konfigurasi derived.** Karena pass menerapkan semua perubahan yang diterima sekaligus,
+konfigurasi hasil seleksi-pass adalah **kombinasi yang belum tentu pernah dievaluasi**.
+Ketiga konfigurasi hasil seleksi-pass karena itu dihitung ulang sebagai konfigurasi tetap
+(`eval_one.py`); tanpa langkah ini, metriknya tidak sah. Total kandidat seleksi: 98 konfigurasi
+hasil tuning + 3 konfigurasi re-eval = **101 konfigurasi unik** (XGB 45, LGBM 47, RF 9).
+
+**Aturan golden (ditetapkan sebelum hasil).** (1) median PR tertinggi; (2) di antara kandidat
+dalam **0,005** median PR, pooled gain tertinggi; (3) di antara kandidat dalam **0,05×** pooled
+gain, Brier terendah; (4) tie-break deterministik pada `config_id`. Aturan yang sama diterapkan
+per arsitektur.
+
+**Nested validation.** Outer LOGO 102 fold; inner `GroupKFold(5)` pada 101 protein latih.
+Setiap kandidat di-fit hanya pada protein inner-training, dipilih berdasarkan median PR inner
+(dalam 0,002 → pooled gain dalam 0,05× → Brier), lalu di-fit ulang pada 101 protein dan
+memprediksi protein uji. Kandidat diambil dari 3 konfigurasi non-RF teratas ditambah XGB dan
+LGBM terbaik dari tuning global; konstruksi kandidat ini memakai seluruh protein sehingga
+nested masih mengandung komponen optimistis.
+
+### 22.3 Imbalance strategy comparison
+
+Dibandingkan pada konfigurasi baseline pass 1 masing-masing model (XGB/LGBM: `max_depth=3`,
+`learning_rate=0,03`, `subsample=1,0`, `colsample_bytree=1,0`; RF: `max_depth=4`,
+`max_features=sqrt`), 102-fold LOGO-CV.
+
+**XGBoost**
+
+| `scale_pos_weight` | Median ROC | Median PR | Pooled PR | Gain | Between AUC | Brier | ECE |
+|---|---:|---:|---:|---:|---:|---:|---:|
+| 1 | 0,8321 | 0,1206 | **0,0982** | **5,708×** | **0,7882** | **0,0162** | **0,0027** |
+| 5 | 0,8272 | 0,1133 | 0,0956 | 5,559× | 0,7862 | 0,0219 | 0,0609 |
+| 10 | 0,8264 | 0,1194 | 0,0905 | 5,258× | 0,7809 | 0,0360 | 0,1140 |
+| 20 | 0,8218 | 0,1238 | 0,0920 | 5,344× | 0,7809 | 0,0697 | 0,1929 |
+| 40 | 0,8207 | 0,1265 | 0,0878 | 5,101× | 0,7805 | 0,1346 | 0,2970 |
+| `ratio` | 0,8120 | 0,1255 | 0,0881 | 5,123× | 0,7828 | 0,1820 | 0,3569 |
+| 80 | 0,8119 | **0,1274** | 0,0858 | 4,988× | 0,7782 | 0,2358 | 0,4159 |
+| 100 | 0,8140 | 0,1272 | 0,0870 | 5,058× | 0,7759 | 0,2747 | 0,4546 |
+
+**LightGBM**
+
+| `scale_pos_weight` | Median ROC | Median PR | Pooled PR | Gain | Between AUC | Brier | ECE |
+|---|---:|---:|---:|---:|---:|---:|---:|
+| 1 | 0,8357 | 0,1181 | 0,1015 | 5,900× | **0,7924** | **0,0162** | **0,0030** |
+| 5 | 0,8267 | 0,1109 | 0,0966 | 5,617× | 0,7843 | 0,0213 | 0,0528 |
+| 10 | 0,8299 | 0,1172 | 0,0959 | 5,571× | 0,7816 | 0,0342 | 0,1020 |
+| 20 | 0,8191 | 0,1212 | 0,0994 | 5,778× | 0,7793 | 0,0630 | 0,1726 |
+| 40 | 0,8179 | 0,1234 | 0,0966 | 5,617× | 0,7743 | 0,1177 | 0,2645 |
+| `ratio` | 0,8171 | 0,1173 | **0,1042** | **6,053×** | 0,7766 | 0,1569 | 0,3178 |
+| 80 | 0,8283 | 0,1096 | 0,0942 | 5,475× | 0,7820 | 0,2033 | 0,3732 |
+| 100 | 0,8029 | **0,1305** | 0,0937 | 5,447× | 0,7747 | 0,2354 | 0,4078 |
+| `is_unbalance=True` | 0,8171 | 0,1173 | **0,1042** | **6,053×** | 0,7766 | 0,1569 | 0,3178 |
+
+`is_unbalance=True` identik dengan `scale_pos_weight="ratio"` pada seluruh delapan metrik
+(selisih 0). Ini konsisten dengan implementasi LightGBM yang menetapkan
+`scale_pos_weight = n_negatif / n_positif` secara internal; keduanya bukan strategi terpisah.
+
+**Random Forest**
+
+| `class_weight` | Median ROC | Median PR | Pooled PR | Gain | Between AUC | Brier | ECE |
+|---|---:|---:|---:|---:|---:|---:|---:|
+| `None` | 0,8109 | **0,1301** | **0,0912** | **5,298×** | **0,7982** | **0,0164** | **0,0040** |
+| `balanced` | 0,8135 | 0,1029 | 0,0692 | 4,020× | 0,7885 | 0,1942 | 0,3725 |
+| `balanced_subsample` | 0,8089 | 0,1051 | 0,0711 | 4,131× | 0,7870 | 0,1902 | 0,3681 |
+
+**Temuan utama.**
+
+- **Tidak ada strategi yang menang di semua metrik.** Pada XGB dan LGBM, `scale_pos_weight=1`
+  memberi pooled PR, between-protein AUC, dan kalibrasi terbaik, tetapi median PR-nya bukan
+  yang tertinggi. Bobot besar (40–100) menaikkan median PR per-protein sedikit, tetapi
+  menurunkan pooled PR, between-protein AUC, dan sangat merusak Brier/ECE.
+- **Pola yang sama di ketiga model:** kenaikan median PR dari pembobotan kelas dibayar dengan
+  penurunan kualitas skor lintas-protein. Contoh ekstrem: LGBM `spw=100` median PR 0,1305
+  (tertinggi) tetapi pooled PR 0,0937 dan Brier 0,2354; LGBM `spw=1` median PR 0,1181 tetapi
+  pooled PR 0,1015 dan Brier 0,0162.
+- **Random Forest justru terbaik tanpa pembobotan** pada baseline ini: `class_weight=None`
+  unggul pada median PR, pooled PR, between-protein AUC, dan Brier dibanding kedua opsi
+  `balanced`. Ini berlawanan dengan resep umum untuk data imbalanced dan menunjukkan bahwa
+  efek pembobotan bergantung pada model, kedalaman, dan metrik yang dioptimalkan.
+- Konsekuensinya, pemilihan "strategi imbalansi terbaik" tidak valid tanpa menyebut metrik.
+  Golden rule memakai median PR sebagai primer dengan pooled gain dan Brier sebagai penjaga;
+  strategi akhir yang terpilih adalah `scale_pos_weight=20` pada LightGBM pass 2, bukan
+  strategi dengan pooled PR terbaik.
+
+### 22.4 Directed tuning results
+
+Baseline Stage 10.2 dan hasil seleksi-pass:
+
+| Model | Baseline Stage 10.2 (median ROC / PR) | Pass-1 selected (derived) | Pass-2 selected (derived) | Re-eval konfigurasi pass terpilih (median PR / gain / Brier) | Median PR terbaik yang pernah dievaluasi |
+|---|---|---|---:|---:|---:|
+| XGBoost | 0,8120 / 0,1255 | `xgb__5c030c8d7c7d` | `xgb__496d370641fb` | 0,1508 / 6,716× / 0,0209 | 0,1523 (`xgb__94b7eeb26f8e`; gain 3,772×, Brier 0,2020) |
+| LightGBM | 0,8171 / 0,1173 | `lgbm__b8bcbf3e4ca3` | `lgbm__f44f0031b2c3` | 0,1522 / 6,478× / 0,0590 | **0,1693** (`lgbm__032c38ffe37f`) |
+| Random Forest | 0,8089 / 0,1051 | `rf__7d4e21346df6` | — | 0,1256 / 5,494× / 0,0162 | 0,1301 (`rf__af1481c35450`; gain 5,298×, Brier 0,0164) |
+
+**Keputusan pass.** XGBoost pass 1 menerima `max_depth=6` (Δmedian PR +0,0229; Δgain
++1,197×), `learning_rate=0,01` (+0,0268; −1,351×), `subsample=0,6` (+0,0079; +0,040×), dan
+`colsample_bytree=0,75` (+0,0080; +0,075×); `scale_pos_weight=40` ditolak (+0,0010; −0,022×).
+Pass 2 menerima `scale_pos_weight=5` (+0,0073; +0,321×) dan `learning_rate=0,08` (+0,0066;
++0,159×), tetapi menolak `max_depth=5` (−0,0045), `subsample=1,0` (+0,0015; −0,466×), dan
+`colsample_bytree=0,9` (−0,0023).
+
+LightGBM pass 1 menerima `scale_pos_weight=100` (+0,0132; −0,606×), `max_depth=6` (+0,0286;
++0,685×), `learning_rate=0,05` (+0,0196; +0,117×), `subsample=0,75` (+0,0355; +0,055×), dan
+`colsample_bytree=0,9` (+0,0078; +0,107×). Pass 2 menerima `scale_pos_weight=20` (+0,0389;
++0,292×), `max_depth=4` (+0,0123; −0,077×), `learning_rate=0,03` (+0,0246; +0,469×),
+`subsample=1,0` (+0,0131; −0,212×), dan `colsample_bytree=0,75` (+0,0234; −0,149×). Semua
+perubahan pass 2 diterima karena kenaikan median PR melewati ambang, meskipun tiga di antaranya
+menurunkan pooled gain. Konfigurasi golden `lgbm__032c38ffe37f` adalah **kandidat variasi
+`scale_pos_weight=20`** yang dievaluasi pada pass 2 terhadap basis pass 1, bukan konfigurasi
+derived hasil seleksi pass 2 (`lgbm__f44f0031b2c3`). Aturan golden meranking seluruh konfigurasi
+yang pernah dievaluasi, sehingga kandidat antara ini bisa menang; konfigurasi derived tidak
+otomatis menjadi golden.
+
+Random Forest menerima `class_weight=None` (+0,0250; +1,167×), `max_depth=6` (+0,0227;
++0,848×), dan `max_features=1,0` (+0,0055; −0,232×).
+
+**Catatan penting tentang `xgb__94b7eeb26f8e`.** Konfigurasi ini punya median PR tertinggi di
+XGB (0,1523), tetapi pooled gain hanya 3,772× dan Brier 0,2020 — lebih buruk daripada baseline
+Stage 10.2 pada pooled PR. Golden rule tidak memilihnya karena guardrail pooled gain dan Brier;
+arsitektur XGB terbaik menjadi `xgb__496d370641fb` (median PR 0,1508; gain 6,716×; Brier 0,0209).
+Ini contoh konkret mengapa median PR saja tidak cukup.
+
+**LightGBM pass 1 reproducibility.** Pass 1 dijalankan ulang penuh dari awal dan **23/23
+konfigurasi mereproduksi seluruh 8 metrik hingga selisih ≤ 1e-12** dibandingkan backup; konfigurasi
+terpilih juga identik. Pass 2 selesai 23/23 tanpa error setelah dijalankan dengan 3 worker.
+
+### 22.5 Golden model selection and final LOGO-CV
+
+Kandidat seleksi: 101 konfigurasi unik. Aturan golden memilih:
+
+| Model | Config | Median ROC (IQR) | Median PR (IQR) | Pooled ROC | Pooled PR | Gain | Within-z | Brier | ECE |
+|---|---|---|---:|---:|---:|---:|---:|---:|---:|
+| XGBoost | `xgb__496d370641fb` | 0,8303 (0,1346) | 0,1508 (0,1825) | 0,8156 | 0,1156 | 6,716× | 0,7662 | 0,0209 | 0,0373 |
+| **LightGBM** | **`lgbm__032c38ffe37f`** | **0,8411 (0,1446)** | **0,1693 (0,1737)** | **0,8131** | **0,1142** | **6,634×** | **0,7709** | 0,0520 | 0,1228 |
+| Random Forest | `rf__7d4e21346df6` | 0,8002 (0,1580) | 0,1256 (0,1572) | 0,7895 | 0,0945 | 5,494× | 0,7380 | **0,0162** | **0,0014** |
+
+**Golden model: LightGBM `lgbm__032c38ffe37f`.**
+
+| Parameter | Nilai |
+|---|---|
+| `n_estimators` | 100 |
+| `max_depth` | 6 |
+| `num_leaves` | 31 |
+| `learning_rate` | 0,05 |
+| `subsample` / `subsample_freq` | 0,75 / 1 |
+| `colsample_bytree` | 0,9 |
+| `min_child_samples` | 20 |
+| `scale_pos_weight` | 20 |
+
+Metrik LOGO-CV lengkap (78 fold evaluable):
+
+| Metrik | Nilai |
+|---|---:|
+| Median ROC (IQR) | **0,8411** (0,1446) |
+| Median PR (IQR) | **0,1693** (0,1737) |
+| Pooled ROC | **0,8131** |
+| Pooled PR | **0,1142** |
+| Pooled PR gain | **6,634×** |
+| Within-protein z-scored ROC | **0,7709** |
+| Within-protein rank ROC | 0,7690 |
+| Brier | 0,0520 |
+| Log loss | 0,1917 |
+| ECE (10 bin kuantil) | 0,1228 |
+| Mean predicted probability | 0,1400 |
+| Prevalensi aktual | 0,0172 |
+| Rasio mean predicted / prevalensi | 8,14× |
+| Between-protein AUC | 0,7751 |
+| Between-protein Spearman | 0,5270 |
+| Between-protein Pearson | 0,4766 |
+| Fold evaluable | 78 |
+
+**Perbandingan berpasangan per fold** (Wilcoxon dua sisi, 78 fold):
+
+| Pembanding | ΔROC median (p) | ΔPR median (p) | Fold PR naik / turun |
+|---|---|---|---:|
+| Stage 10.2 XGB raw | +0,0003 (0,3478) | **+0,0086 (0,0466)** | 45 / 33 |
+| Stage 10.2 RF raw | +0,0158 (0,0862) | **+0,0108 (0,0107)** | 47 / 31 |
+| LightGBM baseline Stage 10.3 | −0,0033 (0,8989) | **+0,0120 (0,0316)** | 44 / 34 |
+
+**Interpretasi.**
+
+- Golden menaikkan **median PR** dari 0,1255 (Stage 10.2 XGB) menjadi 0,1693 (+0,0438; +34,9%)
+  dan **within-protein z-scored ROC** dari 0,7495 menjadi 0,7709 (+0,0214). Pooled ROC naik
+  0,7956 → 0,8131 (+0,0174), pooled PR 0,0881 → 0,1142 (+0,0260), gain 5,123× → 6,634×.
+- Kenaikan **bukan** hanya antar-protein: within-z juga naik. Namun between-protein AUC sedikit
+  **turun** (0,7828 → 0,7751 vs Stage 10.2 XGB; 0,7870 → 0,7751 vs RF), dan gap
+  pooled-minus-within masih 0,0422 (0,8131 − 0,7709), hanya sedikit lebih sempit dari 0,0461
+  pada Stage 10.2 XGB. Inflasi antar-protein belum hilang.
+- Uji berpasangan menunjukkan kenaikan yang konsisten terutama pada **PR**; ROC golden hampir
+  identik dengan Stage 10.2 XGB (p = 0,3478) dan tidak berbeda signifikan dari RF pada ROC
+  (p = 0,0862). Jadi klaim yang tepat adalah "PR ranking membaik pada protein yang sama",
+  bukan "model jauh lebih baik secara umum".
+- **Kalibrasi tidak di-fit ulang.** Mean predicted 0,1400 adalah 8,14× prevalensi; Brier
+  0,0520 dan ECE 0,1228 adalah skor mentah. Stage 10.2 sudah menunjukkan isotonic/sigmoid
+  dapat menurunkan Brier/ECE ke ≈0,016/≈0,002 tanpa memperbaiki peringkat. Karena itu Brier
+  golden **tidak boleh** dibandingkan langsung dengan Brier terkalibrasi Stage 10.2, dan jika
+  probabilitas absolut dibutuhkan, kalibrasi harus di-fit per fold pada protein latih.
+- Pemilihan golden memakai 102 protein yang sama untuk tuning dan evaluasi. Angka 0,1693
+  adalah **optimistic selection estimate**; §22.6 mengukur sebagian optimisme itu.
+
+### 22.6 Nested validation
+
+Outer LOGO 102 fold; inner `GroupKFold(5)` pada 101 protein latih. Kandidat: 3 konfigurasi
+non-RF teratas dari tuning global + XGB dan LGBM terbaik = 4 entri, tetapi
+`lgbm__4e9ac82cd5df` (`ratio`) dan `lgbm__bbe856f87d0b` (`is_unbalance=True`) adalah konfigurasi
+efektif yang sama; yang terakhir tidak pernah dipilih (0 fold), sehingga hasil tidak berubah.
+Tiga konfigurasi efektif: `lgbm__032c38ffe37f`, `lgbm__4e9ac82cd5df`, `xgb__496d370641fb`.
+
+| Metrik | Golden global (dipilih pada 102 protein) | Nested LOGO-CV |
+|---|---:|---:|
+| Median ROC (IQR) | 0,8411 (0,1446) | 0,8303 (0,1316) |
+| Median PR (IQR) | 0,1693 (0,1737) | 0,1550 (0,1839) |
+| Pooled ROC | 0,8131 | 0,7961 |
+| Pooled PR | 0,1142 | 0,0784 |
+| Pooled PR gain | 6,634× | **4,555×** |
+| Within-protein z-scored ROC | 0,7709 | 0,7680 |
+| Brier | 0,0520 | 0,0340 |
+| ECE | 0,1228 | 0,0653 |
+| Mean predicted | 0,1400 | 0,0824 |
+| Between-protein AUC | 0,7751 | 0,7343 |
+| Fold evaluable | 78 | 78 |
+
+**Pilihan konfigurasi per fold:** `xgb__496d370641fb` **81/102**, `lgbm__032c38ffe37f` **11/102**,
+`lgbm__4e9ac82cd5df` **10/102**, `lgbm__bbe856f87d0b` **0/102**.
+
+**Interpretasi.**
+
+- Gap global vs nested: median PR 0,1693 → 0,1550 (−0,0144), pooled PR 0,1142 → 0,0784
+  (−0,0358), pooled gain 6,634× → 4,555× (−2,08×), median ROC 0,8411 → 0,8303 (−0,0109).
+  Ini adalah estimasi optimisme seleksi yang lebih jujur daripada angka global.
+- Gap **pooled PR jauh lebih besar** daripada gap median per-fold. Perbandingan berpasangan
+  nested vs golden global memberi median ΔPR 0,0000 dengan 36 fold naik, 36 turun, dan 6 tie.
+  Artinya ranking per-protein tidak jauh berubah; yang rusak adalah **komparabilitas skala
+  skor antar-fold**, karena setiap fold dapat memilih konfigurasi berbeda. Pooled PR
+  mengagregasi skor dari model yang berbeda per protein, sehingga sangat sensitif terhadap
+  perbedaan skala. Metrik median per-protein dan within-protein harus dilaporkan bersama
+  pooled, tidak menggantikannya.
+- Nested masih lebih baik daripada Stage 10.2 RF pada PR (Δ +0,0153; p = 0,0194) dan tidak
+  berbeda signifikan dari Stage 10.2 XGB pada PR (Δ +0,0083; p = 0,1093) maupun ROC
+  (Δ +0,0171; p = 0,0742). Klaim yang benar: prosedur tuning menghasilkan keunggulan PR yang
+  modest dan tidak konsisten secara statistik terhadap XGB Stage 10.2.
+- **Keterbatasan nested:** kandidat berasal dari tuning global yang memakai seluruh 102
+  protein. Pipeline yang sepenuhnya nested (tuning di dalam setiap outer fold) tidak
+  dijalankan; itu akan jauh lebih mahal dan tetap tidak menghilangkan bias pemilihan fitur
+  atau radius dari stage sebelumnya.
+
+### 22.7 Interpretation and limitations
+
+- **Golden Stage 10.3 adalah tuned LightGBM, bukan model baru secara arsitektur.** Tidak ada
+  fitur baru, protein baru, atau dataset baru; yang berubah hanya konfigurasi dan strategi
+  imbalansi.
+- **Peningkatan terutama pada PR, bukan ROC.** Median PR +34,9% relatif terhadap Stage 10.2
+  XGB, tetapi median ROC +0,0292 dan ΔROC berpasangan tidak signifikan. Jangan mengutip
+  kenaikan PR sebagai bukti generalisasi.
+- **Pemilihan strategi imbalansi bergantung metrik.** Bobot kelas besar menaikkan median PR
+  tetapi menurunkan pooled PR/gain, between-protein AUC, dan kalibrasi. Stage 10.3 tidak
+  menemukan "strategi terbaik" universal.
+- **Brier/ECE golden adalah skor mentah.** Tidak ada kalibrasi ulang; angka ini tidak
+  sebanding dengan Stage 10.2 terkalibrasi (0,0163/0,0016). Jika probabilitas absolut
+  diperlukan, gunakan kalibrasi per fold pada protein latih dan laporkan terpisah.
+- **Selection bias terukur tetapi belum hilang.** Nested menurunkan median PR ke 0,1550 dan
+  pooled gain ke 4,555×; kandidat nested masih berasal dari tuning global, dan radius 12 Å
+  serta fitur spasial sudah dipilih pada stage sebelumnya memakai protein yang sama.
+- **Tidak ada validasi eksternal.** Seluruh 102 protein terlibat dalam desain (fitur, radius,
+  tuning, seleksi). Tidak ada holdout protein baru.
+- **12 Å masih batas grid.** Stage 10.3 tidak menguji radius 14/16 Å atau ablasi fitur.
+- **Tidak ada analisis stabilitas seed.** XGBoost dan LightGBM dijalankan single-thread dengan
+  parameter tetap; Random Forest memakai `n_jobs=-1`. Golden OOF direproduksi bit-identik
+  dalam environment ini, tetapi stabilitas lintas seed/BLAS tidak diuji.
+- **Konfigurasi derived sudah dihitung ulang.** Tanpa re-eval, metrik konfigurasi hasil
+  seleksi-pass tidak sah karena kombinasi tersebut belum tentu pernah dievaluasi.
+- **Jangan memakai kolom `oof_*` sebagai fitur.** Peringatan C28 tetap berlaku.
+
+### 22.8 Audit provenance
+
+- Harness eksternal (di luar repo): `stage103_common.py`, `tune_model.py`, `select_golden.py`,
+  `eval_one.py`, `nested_validate.py`, `compare_final.py`, `summarize_tuning.py`,
+  `provenance.py`, `make_report.py`.
+- Artefak: `tuning/{xgb,lgbm,rf}/best_config.json`; `selection/golden_selection.json`;
+  `final/summary_golden.json` (SHA256 `8fed6bed…e367a6`) dan `final/oof_golden.npz`
+  (`93cb9276…218d9d`); `nested/nested_summary.json` (`880b2d45…a48c`) dan
+  `nested/nested_oof.npz` (`ca9364b7…267a`); `final/provenance.json` (17 artefak).
+- Verifikasi: OOF golden 55.503 baris, 0 NaN, 955 positif, 102 protein, urutan baris = CSV;
+  OOF golden identik dengan OOF tuning `lgbm__032c38ffe37f` (selisih maksimum 0,0).
+- Environment: Python 3.12.10; numpy 2.5.4; pandas 3.0.6; scipy 1.18.1; scikit-learn 1.9.1;
+  xgboost 3.4.1; lightgbm 4.6.0. Repo commit `f995c8c`; tidak ada file tracked yang berubah.
+- LightGBM pass 1 dijalankan ulang: 23/23 konfigurasi identik hingga 1e-12. Pass 2 selesai
+  23/23 tanpa error setelah dijalankan dengan 3 worker.
+
+---
+
+## 23. Recommended Next Step — External Validation
 
 **Rekomendasi: validasi eksternal pada protein yang tidak terlibat dalam desain, bukan
-klaim generalisasi. Sweep radius dan kalibrasi out-of-fold sudah diselesaikan di Stage
-10.2; keduanya masih evaluasi internal pada 102 protein yang sama.**
+klaim generalisasi. Sweep radius dan kalibrasi out-of-fold diselesaikan di Stage 10.2, dan
+tuning + pemilihan golden diselesaikan di Stage 10.3; semuanya masih evaluasi internal pada
+102 protein yang sama.**
 
 Fokus:
 
@@ -1879,23 +2296,27 @@ Fokus:
 5. **Laporkan median + IQR dan pooled secara terpisah;** sediakan fold `unevaluable`
    untuk protein tanpa positif (24 protein). Gunakan nilai reproduced, bukan nilai klaim
    yang tidak cocok (C20, C22).
-6. **Metrik internal terbaru adalah Stage 10.2 (radius 12 Å, 16 fitur).** XGB pooled
-   ROC 0,7956 / PR 0,0881, median ROC 0,8120, within-z ROC 0,7495, between-protein AUC
-   0,7828; RF pooled ROC 0,7759 / PR 0,0711, median ROC 0,8089, within-z ROC 0,7338,
-   between-protein AUC 0,7870. Bandingkan dengan Stage 10.1 (radius 8 Å: XGB pooled
-   0,7676 / 0,0759; RF 0,7568 / 0,0668), Stage 9.5 (tanpa fitur spasial: XGB pooled
-   0,7476 / 0,0640; RF 0,7476 / 0,0608), dan Stage 9.4 hanya sebagai pembanding historis
-   (C24).
-7. **Putuskan status benchmark Stage 9.3, 9.4, 9.5, 10.1, dan 10.2** (lock terpisah atau
-   tetap sebagai artefak ekspansi) sebelum memakai metriknya sebagai pembanding resmi.
+6. **Metrik internal terbaru adalah Stage 10.3 golden LightGBM (radius 12 Å, 16 fitur).**
+   Median ROC 0,8411 / PR 0,1693; pooled ROC 0,8131 / PR 0,1142 / gain 6,63×;
+   within-protein z-scored ROC 0,7709; Brier 0,0520 dan ECE 0,1228 (skor mentah, belum
+   terkalibrasi); between-protein AUC 0,7751. Nested LOGO-CV memberi median PR 0,1550 /
+   pooled gain 4,55× — gunakan angka nested sebagai estimasi internal yang lebih
+   konservatif. Bandingkan dengan Stage 10.2 (XGB pooled 0,7956 / 0,0881; RF 0,7759 /
+   0,0711), Stage 10.1 (radius 8 Å: XGB 0,7676 / 0,0759; RF 0,7568 / 0,0668), Stage 9.5
+   (XGB 0,7476 / 0,0640; RF 0,7476 / 0,0608), dan Stage 9.4 hanya sebagai pembanding
+   historis (C24).
+7. **Putuskan status benchmark Stage 9.3, 9.4, 9.5, 10.1, 10.2, dan 10.3** (lock terpisah
+   atau tetap sebagai artefak ekspansi) sebelum memakai metriknya sebagai pembanding resmi.
 8. **Jangan memakai pooled ROC sebagai bukti generalisasi.** Laporkan juga metrik
-   within-protein dan median per-protein; pooled ROC Stage 10.2 (0,7956/0,7759) masih
-   lebih tinggi dari within-protein z-scored ROC (0,7495/0,7338), jadi inflation
-   antar-protein tetap ada (C23, C25, C27).
+   within-protein dan median per-protein; pooled ROC Stage 10.3 (0,8131) masih lebih
+   tinggi dari within-protein z-scored ROC (0,7709), jadi inflation antar-protein tetap
+   ada; between-protein AUC golden (0,7751) bahkan sedikit lebih rendah dari Stage 10.2
+   XGB (0,7828). Nested juga menunjukkan pooled PR sangat sensitif terhadap skala skor
+   antar-fold (C23, C25, C27).
 9. **Jadikan fitur spasial kandidat tetap, bukan kesimpulan.** Sweep radius sudah
-   dilakukan (Stage 10.2), tetapi ablasi fitur penuh, uji stabilitas importance
-   lintas-seed, dan uji radius 14/16 Å belum. 12 Å adalah batas grid, bukan optimum
-   global yang terbukti (C25).
+   dilakukan (Stage 10.2) dan tuning sudah dilakukan (Stage 10.3), tetapi ablasi fitur
+   penuh, uji stabilitas importance lintas-seed, dan uji radius 14/16 Å belum. 12 Å adalah
+   batas grid, bukan optimum global yang terbukti (C25).
 10. **Jika membutuhkan probabilitas absolut, gunakan sigmoid, bukan isotonic.** Keduanya
     memperbaiki skala (Brier 0,18 → 0,016; ECE 0,36 → 0,002), tetapi isotonic menciptakan
     tie dan menurunkan median ROC RF 0,8089 → 0,7948 pada evaluasi ini; sigmoid
@@ -1904,18 +2325,19 @@ Fokus:
 11. **Enam kolom OOF pada dataset terkalibrasi bukan fitur latih.** Jangan memakainya
     sebagai input model tanpa nested CV; kolom itu adalah artefak audit (C28).
 
-**Gate Stage 10.2:** jangan klaim generalisasi sebelum ada validasi eksternal dan
-metrik yang direproduksi dari repo bersih. Stage 10.2 sudah melewati bagian sweep radius
-dan kalibrasi OOF internal, tetapi belum melewati gate validasi eksternal; ia tidak
-menguji satu pun protein baru.
+**Gate Stage 10.3:** jangan klaim generalisasi sebelum ada validasi eksternal dan metrik
+yang direproduksi dari repo bersih. Stage 10.2 sudah melewati bagian sweep radius dan
+kalibrasi OOF internal; Stage 10.3 sudah melewati tuning dan pemilihan golden internal,
+termasuk nested LOGO-CV. Keduanya belum melewati gate validasi eksternal dan tidak menguji
+satu pun protein baru.
 
 ---
 
 ```
 NEXT GATE:
-STAGE 10.3+ — EXTERNAL VALIDATION
-(Stage 10.2 = multi-radius sweep + OOF calibration on the same 102 proteins,
- not external validation)
+STAGE 10.4+ — EXTERNAL VALIDATION
+(Stage 10.3 = hyperparameter tuning + golden selection on the same 102 proteins,
+ not external validation; Stage 10.2 = radius sweep + OOF calibration)
 ```
 
 ---
@@ -1941,3 +2363,4 @@ indikasi kerusakan data (semua checksum & test tetap konsisten).
 | D11 | **Pembersihan P11532 mengubah metrik pooled vs Stage 9.4.** Setelah P11532 dikeluarkan dan model di-retrain: XGB pooled ROC 0,7575 → 0,7476, pooled PR 0,0606 → 0,0640, median ROC 0,7359 → 0,7371; RF pooled ROC 0,7471 → 0,7476, pooled PR 0,0573 → 0,0608, median ROC 0,7339 → 0,7330. | `results/dataset/production_dataset_100_cleaned.csv`; §19.3 | Rendah — bukan error; dampak pembersihan diukur dan didokumentasikan |
 | D12 | **`download/` tidak berisi file PDB/CIF/PAE untuk Stage 10.1.** Permintaan Stage 10.1 mengasumsikan file struktur ada di `download/`, tetapi folder itu hanya berisi 6 CSV, 4 Markdown, dan 1 notebook. Ekstraksi memakai cache audit Stage 9.4 di luar tracked tree (102 CIF + 102 PAE + 102 respons API AFDB); tidak ada unduhan baru. | Isi `download/`; `C:\Users\walet\AppData\Local\Temp\stage94_audit\data\`; §20.3 | Rendah — provenance jelas dan file yang dipakai adalah file audit Stage 9.4 yang sama; tetapi ekstraktor tidak dapat direproduksi hanya dari repo tanpa menyediakan file struktur |
 | D13 | **Boundary radius 10 Å sensitif terhadap presisi koordinat Cα.** `Bio.PDB` menyimpan koordinat sebagai `float32`, sedangkan Stage 10.2 mem-parse teks CIF penuh sebagai `float64`. Dua pasangan residu P01024 tepat di ambang 10,0 Å (posisi 531 dan 631) berubah status tetangga antara kedua representasi; radius 6/8/12 Å tidak terpengaruh. | Perbandingan `float64` CIF vs `Bio.PDB` `float32` pada P01024 (Stage 10.2); `extract_multi_radius.py`; §21.2–§21.3 | Rendah — hanya memengaruhi radius 10 Å pada satu protein; radius terpilih (12 Å) dan CSV r8 identik byte-per-byte dengan Stage 10.1. Angka radius 10 Å tidak boleh dianggap identik dengan ekstraksi `float32` |
+| D14 | **Nama "Stage 10.3" bertabrakan dengan rencana lama.** Dokumen Stage 10.2 menetapkan `STAGE 10.3+ — EXTERNAL VALIDATION`. Permintaan Stage 10.3 (2026-10-21) berisi tuning hiperparameter + pemilihan golden pada 102 protein yang sama, bukan validasi eksternal. Audit ini memakai nama Stage 10.3 sesuai permintaan dan memindahkan gate validasi eksternal menjadi Stage 10.4+. | §15, §22 (baru), §23; blok `NEXT GATE` sebelum dan sesudah audit | Rendah — bukan error data; risiko salah baca bahwa Stage 10.3 adalah validasi eksternal. Semua bagian baru menyatakan eksplisit bahwa Stage 10.3 = tuning internal dan tidak menguji protein baru |
