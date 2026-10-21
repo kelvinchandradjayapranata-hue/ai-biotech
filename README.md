@@ -960,7 +960,8 @@ not from the figure.
 ![Conceptual guide to AlphaFold PAE and pLDDT](docs/assets/pae-confidence-guide.jpg)
 
 *PAE describes relative placement uncertainty between residue pairs; pLDDT describes local
-per-residue confidence. Source and reuse license were not recorded with the downloaded file.*
+per-residue confidence. The file carries a visible `© BLOLC_ARTRICLE_MEASURIS` watermark;
+its source and reuse license are not otherwise documented.*
 
 The second figure is a generic structural-biology illustration of a two-domain protein with
 an annotated active site and Mg²⁺ ions. It is **not** a project target, not a dataset example,
