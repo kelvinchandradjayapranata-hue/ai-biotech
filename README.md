@@ -822,7 +822,10 @@ ai-biotech/
 │   ├── BENCHMARK_DATASET_LOCK.md            # benchmark contract & Stage 8.2 metrics
 │   ├── TAHAP_5_AFDB_DOWNLOAD_REPORT.md      # Stage 5 download & integrity report
 │   ├── TAHAP_6_MULTI_PROTEIN_FEATURE_REPORT.md  # Stage 6 extraction report & schema
-│   └── assets/banner.svg                    # README hero banner
+│   └── assets/
+│       ├── banner.svg                       # README hero banner
+│       ├── pae-confidence-guide.jpg         # conceptual PAE/pLDDT visual glossary
+│       └── protein-active-site.jpg          # illustrative active-site structure
 ├── notebooks/
 │   └── 01_first_protein_analysis.ipynb      # concept notebook (amino acids → pLDDT/PAE/pTM)
 ├── requirements.txt
@@ -947,6 +950,29 @@ The remaining 26 features are unchanged from the Stage 3 definitions.
 confidence — not biological truth. A high-confidence prediction can still be wrong, and verifying
 a structure requires real experiments (X-ray crystallography, NMR, cryo-EM, and so on). Nothing
 in this repository should be read as experimentally validated structure or function.
+
+### Visual glossary
+
+The figure below summarizes how PAE and pLDDT answer different confidence questions. It is
+explanatory only; every feature in this project is computed directly from AFDB CIF/PAE files,
+not from the figure.
+
+![Conceptual guide to AlphaFold PAE and pLDDT](docs/assets/pae-confidence-guide.jpg)
+
+*PAE describes relative placement uncertainty between residue pairs; pLDDT describes local
+per-residue confidence. Source and reuse license were not recorded with the downloaded file.*
+
+The second figure is a generic structural-biology illustration of a two-domain protein with
+an annotated active site and Mg²⁺ ions. It is **not** a project target, not a dataset example,
+and metal binding is **not** a separate label class under the A+B policy.
+
+![Conceptual illustration of a two-domain protein with active site and Mg2+ ions](docs/assets/protein-active-site.jpg)
+
+*Illustrative only; source and reuse license were not recorded. Do not cite it as project
+data or as evidence for the A+B labels.*
+
+> **Before publishing:** confirm reuse rights for both images. They were copied from the
+> untracked `download/` folder, whose files carry no source or license metadata.
 
 ## Limitations and Future Work
 
